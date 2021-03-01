@@ -1,0 +1,25 @@
+/* https://stackoverflow.com/questions/41376406/remove-title-from-tabularinline-in-admin */
+.inline-group .tabular tr.has_original td {
+    padding-top: 8px;
+}
+
+.original {
+    display: none;
+}
+/*
+.column-tally {
+width: 210px;
+}
+
+.field-tally .vTextField{
+    width: 200px;
+}
+   */ 
+[class^="column-tally"] {
+    width: 210px;
+}
+
+[class^="field-tally"]  .vTextField{
+    width: 200px;
+}
+/**/

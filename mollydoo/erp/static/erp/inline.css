@@ -1,0 +1,132 @@
+/*
+label {
+    width:80px;
+    clear:left;
+    text-align:right;
+    padding-right:10px;
+    margin-right:5px;
+}
+input, label {
+    float:left;
+}
+
+  subject = forms.CharField(max_length=100)
+    subject.widget.attrs.update({'id' : 'your_id'})
+
+*/
+/* https://raw.githubusercontent.com/django/django/master/django/contrib/admin/static/admin/css/base.css */
+
+/*
+input[type=text], input[type=password], input[type=email], input[type=url],
+input[type=number], input[type=tel], textarea, select, .vTextField {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1px 1px;
+    margin-top: 0;
+    color: var(--body-fg);
+    background-color: var(--body-bg);
+}
+
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus,
+input[type=url]:focus, input[type=number]:focus, input[type=tel]:focus,
+textarea:focus, select:focus, .vTextField:focus {
+    border-color: var(--body-quiet-color);
+}
+
+select {
+    height: 5px;
+}
+*/
+/* this works
+.aligned label { 
+    display: block;
+    padding: 4px 10px 0 0;
+    float: left;
+    width: 100px;
+    word-wrap: break-word;
+    line-height: 1;
+}
+
+
+.aligned label {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    width: 100px;
+    line-height: 26px;
+    margin-bottom: 0px;
+    margin-right: 10px;
+  }
+  
+input {
+    height: 20px;
+    flex: 0 0 200px;
+    margin-left: 0px;
+    margin-right: 81px;
+  }
+
+select {
+    height: 20px;
+    margin-right: 80px;
+  }
+
+.aligned label + div.readonly {
+    height: 20px;
+    margin-left: 120px !important;
+    margin-right: 180px; !important;
+  }
+.aligned .vCheckboxLabel + div.help {
+    margin-top: -20px !important;
+}
+aligned label + div.help {
+    margin-top: -20px !important;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+form .aligned div.help:last-child {
+    margin-top: -20px !important;
+    padding-bottom: 0;
+}
+
+.aligned .vCheckboxLabel + p.help, .aligned .vCheckboxLabel + div.help {
+    margin-top: -20px !important;
+}
+
+.helptext {
+    margin-top: -20px;
+    color:blue;
+    }
+
+
+*/
+fieldset .fieldBox {
+    margin-right: 0px;
+    }
+.vIntegerField {
+    width: 3em;
+}
+.inline-related h3 {
+    margin-top: 10px;
+    color: #666;
+    font-size: 18px;
+    background: #b5c3ca;
+}
+.form-row {
+    border-bottom: 1px solid #242121;
+}
+.form-row.field-product_notes label {
+    width: 120px!important;
+}
+.form-row.field-xnotes{
+    padding: 1px;
+    border-bottom: 1px solid #eee;
+    background-color: rgb(212, 230, 218);
+}
+.form-row.field-product_notes .aligned label + div.readonly {
+    margin-left: 160px;
+}
+
+
+

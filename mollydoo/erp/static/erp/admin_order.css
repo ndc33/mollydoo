@@ -1,0 +1,23 @@
+/*
+fieldset .fieldBox {
+    float: left;
+    margin-right: 0px;
+}
+:not(:first-child)
+*/
+
+.options > div:not(:first-child) select fieldset .fieldBox.field-CD, .fieldBox.field-LD, .fieldBox.field-DD, .fieldBox.field-Batch{
+    margin-left: 80px;
+}
+
+.fieldBox label{
+    width: 100px;
+}
+
+fieldset .fieldBox.field-delivered, .fieldBox.field-LD {
+    margin-left:  150px;
+}
+
+fieldset .fieldBox.fieldBox.field-batch_info {
+    margin-left: 80px;
+}

@@ -1,0 +1,30 @@
+# UI help
+# - to get started on UI navigation ignore everything except "company, invoice, worksviews", perhaps then explore products, batches etc
+# - 2 step inlines (you will see) used to protect FK's of saved records
+# fields named x_ are copies from template fields that allow instance specific modification
+
+
+# architecture
+# - no generic foreign keys
+# - prefer model/admin 'packages' (as implimented) rather than typical django layout, unless there are long term consequences
+# - will move to postgres or mysql
+
+# Deployment
+# - continoius vs intermitent DB connections
+# - number of workers etc
+# - ngix etc setup
+# - static file serving
+# - setup for high availability/backups/snapshots/fallover
+
+# features (further info in code comments)
+# - a lot of work required on query management (either model managers or better admin view get_queryset) [prefetch/annotations etc]
+# - simple messaging system along the lines of pinax notes or home made
+# - fixed nav bar, hold change-view save button, some navigation links
+# - for the new 'tally' system on works views - could do with some jquery magic 
+# - - to allow submission on pressing return, also keep scroll position (default is return to top)
+# html quote/sales order view to allow printing
+# product static files
+# route planner/map
+
+
+

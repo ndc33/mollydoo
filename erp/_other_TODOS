@@ -1,9 +1,0 @@
-# move to postgres or mysql
-# continoius vs intermitent DB connections
-# number of workers etc
-# ngix etc setup
-# static file serving
-# setup for high availability/backups/snapshots/fallover
-# simple messaging system along the lines of pinax notes or home made
-# fixed nav bar, hold change-view save button, some navigation links
-

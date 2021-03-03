@@ -7,7 +7,7 @@ from ..utils import ss, decorate
 class Batch(models.Model):
     title = models.CharField(max_length=20, blank=True, default='')
     DD = models.DateField(auto_now_add=False, blank=True, null=True)
-    MD = models.DateField(auto_now_add=False, blank=True, null=True)#, help_text="Manufacturing Date")#, verbose_name="Manufacturing Date")
+    #MD = models.DateField(auto_now_add=False, blank=True, null=True)#, help_text="Manufacturing Date")#, verbose_name="Manufacturing Date")
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -52,6 +52,10 @@ class BatchOrder(models.Model):
             dd = None
         return dd
     #@property
+    @decorate(short_description = "CD")
+    def CD_markup(self):
+        return self.order.CD_markup
+    #@property
     @decorate(boolean=True) # not working when delared as property
     def CD_C(self):
         try:
@@ -70,17 +74,15 @@ class BatchOrder(models.Model):
     def __str__(self):
         return '%s' % self.id
 
-# -----old--------
 
-# class Container(models.Model):
-#     title = models.CharField(max_length=255, blank=True, null=True)
-#     dispatch_date = models.DateField(auto_now_add=False, blank=True, null=True)
-#     confirmed = models.BooleanField(default=False)
-#     notes = models.TextField(blank=True, null=True)
-#     #created_at = models.DateTimeField(auto_now_add=True)
-#     #modified = models.DateTimeField(auto_now=True)
-#     def __str__(self):
-#          return '%s' % (self.id)
+class Container(models.Model): # exploration
+    title = models.CharField(max_length=255, blank=True, null=True)
+    dispatch_date = models.DateField(auto_now_add=False, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    def __str__(self):
+         return '%s %s' % (self.title, self.dispatch_date or '')
+
+# -----old--------
 
 # ARCHIVED
 # class PriceList(models.Model):

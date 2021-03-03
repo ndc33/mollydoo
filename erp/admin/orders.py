@@ -141,15 +141,15 @@ class OrderAdmin(admin2):
         'show_delete': False,
         'show_save': False
     }
-    list_display = ['id','company','OD','LDs','CDc','MD', 'DD','batch_name','status','xx'] 
+    list_display = ['id','company','OD','LD_markup','CD_markup', 'DD','batch_name','status','xx'] 
     fields = [
         ('id', 'delivered', 'invoiced', 'paid'),
         'company',
         ('OD','LD','LD_S'),
         ('CD', 'CD_C','batch_info'),  
-        'notes','xorder_notes','xmanufacture_notes','xdelivery_notes'
+        'notes','xorder_notes','xmanufacture_notes','xdelivery_notes','container'
     ]
-    search_fields = ['foreign_key__related_fieldname'] # example - note the db field follow!
+    #search_fields = ['foreign_key__related_fieldname'] # example - note the db field follow!
     inlines = [OrderItemInlineFixedKey, OrderItemInlineFreeKey]#[OrderItemInline]
     class Media:
         #extend = False # keep for info, default True
@@ -158,7 +158,7 @@ class OrderAdmin(admin2):
         pass #js = ('erp/q.js',)
     #actions = [admin_order_shipped]
     def get_readonly_fields(self, request, obj=None):
-        default = ['id','batch_info','batch_name','DD','MD','created_at','modified','status','xs1','LDs','CDc']
+        default = ['id','batch_info','batch_name','DD','created_at','modified','status','xs1','LD_markup','CD_markup']
         if obj: # existing record
             return default+['company']
         #self.autocomplete_fields = ['company'] # attempted hack
@@ -211,7 +211,7 @@ class OrderItemAdmin(admin2):
         return False
     def has_delete_permission(self, request, obj=None):
         return False
-    list_display = ('product','quantity','norder','MD',*work_field_names)
+    list_display = ('product','quantity','norder',*work_field_names)
     list_per_page = 50
     list_filter = (OrderItemTypeFilter, OrderItemOrderFilter, OrderItemBatchFilter)
     producttitle = True
@@ -225,7 +225,7 @@ class OrderItemAdmin(admin2):
         return (('company','norder','batch'),'order_notes','xnotes',*wf)
     def get_readonly_fields(self, request, obj=None):
         default = ('company','product','quantity','norder',
-                        'order_notes','work_fields','batch','MD')
+                        'order_notes','work_fields','batch')
         return default
     class Media:
         css = {'all': ('erp/label_width.css', )}

@@ -19,19 +19,25 @@ from .setup import admin2, text_box
 
 from ..utils import sumtally, ss, setwidget, work_field_names
 
-# likely much cleaner/simpler was of obtaing the following functionilty
+# likely much cleaner/simpler ways of obtaing the following functionilty
 
 class OrderItemWorksView(OrderItem): # required for different __str__
     class Meta:
         proxy = True
     def __str__(self):
-         return '%s of %s' % (self.quantity, self.product) 
-
+        return '%s of %s' % (self.quantity, self.product) 
+    # def save(self, *args, **kwargs):
+    #     if not self.id: 
+    #         qty = self.quantity
+    #         self.printed = True if (self.total > qty) else False
+    #     import ipdb; ipdb.set_trace() 
+    #     super().save(*args, **kwargs)
+    
 
 class WorksTemplateInline(admin.TabularInline):
     model = OrderItemWorksView
     extra = 0
-    description = True
+    description = True #?
     readonly_fields = ['xproduct','quantity','xnotes','total']# + self.rofields
     class Media:
         css = {'all': ('erp/hide_inline_title.css',)} #'erp/hide_inline_title.css',
@@ -54,8 +60,8 @@ class WorksTemplateInline(admin.TabularInline):
             batch_obj = obj.product
             url = reverse(name_proxy +":erp_product_change", args=[batch_obj.id]) 
             return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, batch_obj)
-    def total(self, obj):
-        return sumtally(getattr(obj, self.tally))
+    # def total(self, obj):
+    #     return sumtally(getattr(obj, self.tally))
     
 
 
@@ -70,11 +76,11 @@ class WorksOrderTemplate(admin2):
         'show_save': False,
      #   'title': title
     }
-    list_display = ['id','company','MD','batch_info']
+    list_display = ['id','company','batch_info']
 
     fields = ['xmanufacture_notes','xdelivery_notes'] # ('id','company', 'key_date') -> are in page title
     # ('company','id'),('MD','batch_info'),
-    readonly_fields = ['batch_info','xmanufacture_notes','xdelivery_notes','created_at','modified','company','id','MD']
+    readonly_fields = ['batch_info','xmanufacture_notes','xdelivery_notes','created_at','modified','company','id']
     class Media:
         pass #js = ('erp/q.js',)
     def get_actions(self, request):

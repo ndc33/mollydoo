@@ -1,0 +1,28 @@
+# aid to thinking about query optimisations
+
+Address, 
+	fk company
+Contacts
+	fk company
+Company
+	R address [address]
+	R contact [contact]
+	R product [company]
+ProductType
+	R Product [product]
+Product
+	fk Company 
+	fk ProductType [type]
+	R orderitem [item]
+Order
+	fk company
+	R orderitem [item]
+	R batchitem [batchorder]
+OrderItem
+	fk Order 
+	fk Product
+Batch
+	R batchitem [batchorder]
+BatchItem
+	fk Batch 
+	121 Order [batchorder]

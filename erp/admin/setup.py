@@ -88,8 +88,8 @@ class admin2(admin.ModelAdmin): # SimpleHistoryAdmin
                 batch_title = None
             # ugly botch to fit with current architecture
             self.suppress_form_controls['title'] = mark_safe(
-                '%s%s Order: %s%s MD: %s%s Batch: %s' % 
-                (obj.company.name, ss*18, obj.id, ss*36, obj.MD, ss*18, obj.batch_info)
+                '%s%s Order: %s%s Batch: %s' % 
+                (obj.company.name, ss*18, obj.id, ss*36, obj.batch_info)
                 )
         context.update({**self.suppress_form_controls})
         return super().render_change_form(request, context, add, change, form_url, obj)

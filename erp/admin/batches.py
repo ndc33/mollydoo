@@ -2,15 +2,15 @@ from django import forms
 from django.db import models
 from django.db.models import Q, F, Count
 from django.contrib import admin
-#from django.urls import reverse
-#from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.html import format_html
 #from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 #from django.contrib.admin.options import change_view
 #from django.shortcuts import redirect
 
 from ..models import Product, Order
-from ..models import BatchOrder, Batch
+from ..models import BatchOrder, Batch, Container
 
 from .setup import admin2, text_box
 from .setup import erp_admin, site_proxy, name_proxy
@@ -18,10 +18,44 @@ from .setup import erp_admin, site_proxy, name_proxy
 from ..utils import setwidget
 
 
+class ContainerOrderInline(admin.TabularInline):
+    model = Order
+    extra = 0
+    #show_change_link = True
+    #list_display = ('title', 'type', 'active')
+    fields = ('order_link', 'company','OD', 'LD_markup', 'CD_markup') # 'id'
+    readonly_fields=('order_link','id', 'company','OD','LD_markup','CD_markup') # 'id',
+    class Media:
+        css = {'all': ('erp/hide_inline_title.css', )}
+    def has_add_permission(self, request, obj=None):
+         return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+    def order_link(self, obj): 
+        #import ipdb; ipdb.set_trace() 
+        if obj:
+            batch_obj = obj
+            url = reverse(name_proxy +":erp_order_change", args=[batch_obj.id]) 
+            return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, batch_obj)
+
+
+@admin.register(Container, site=site_proxy)
+class ContainerAdmin(admin2):
+    inlines = [ContainerOrderInline]
+    suppress_form_controls = {
+            'show_save_and_add_another': False,
+            'show_save': False,
+            #'show_delete': False
+    }
+    formfield_overrides = text_box(3, 70)
+    pass
+
+
+
 class BatchOrderInline(admin.TabularInline):
     model = BatchOrder
     extra = 0
-    fields = ('order', 'company', 'CD', 'CD_C')
+    fields = ('order', 'company', 'CD_markup')
     class Media:
         css = {'all': ('erp/hide_inline_title.css', )}
     def get_formset(self, request, obj=None, **kwargs):
@@ -45,17 +79,17 @@ class BatchOrderInline(admin.TabularInline):
             pass
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     def get_readonly_fields(self, request, obj=None):
-        return ('company','CD','CD_C')
+        return ('company','CD_markup',)
     # CD_C.boolean = True # keep info
 
     
 @admin.register(Batch, site=site_proxy)
 class BatchAdmin(admin2):
-    list_display = ['title', 'MD', 'DD', 'orders'] # 'num_orders','DD'] # 'CD', 'CD_C', 
+    list_display = ['title', 'DD', 'orders'] # 'num_orders','DD'] # 'CD', 'CD_C', 
     readonly_fields=('id','orders') #'num_orders')
    
     formfield_overrides = text_box(3, 70)
-    fields = ['title', 'DD', 'MD', 'notes']
+    fields = ['title', 'DD', 'notes']
     suppress_form_controls = {
             'show_save_and_add_another': False,
             'show_delete': False
@@ -72,22 +106,25 @@ class BatchAdmin(admin2):
     def orders(self, obj):
         qq = Order.objects.filter(batchorder__batch__pk = obj.id)# query
         return ['%s-%s'%(q.company.shortname, q.id) for q in qq]
+   
   
 
    
 
 # --------- ignore below -------------
 
-"""
 
-#@admin.register(BatchOrder, site=site_proxy) # not used
+
+@admin.register(BatchOrder, site=site_proxy) # only for exploration
 class BatchOrderAdmin(admin2):
     model = BatchOrder
     extra = 0
     remove_pk_controls = ['batch', 'order']
     readonly_fields=('id', 'LD', 'xs1')
     fields = ('batch', ('order', 'xs1', 'LD'))
-#     list_display = ('product', 'quantity', 'company', 'order')
+    list_display = ('order','batch')
+    list_editable = ('batch',)
+    list_display_links = None#('order',)
 #     readonly_fields=('order', 'product', 'quantity')
     def formfield_for_foreignkey(self, db_field, request, **kwargs): # in progress
         if db_field.name == "order":
@@ -216,3 +253,5 @@ class BatchOrderAdmin(admin2):
 # @admin.register(PriceListItem)
 # class PriceListItemAdmin(admin.ModelAdmin):
 #     pass #list_display = ('title', 'type')
+
+"""

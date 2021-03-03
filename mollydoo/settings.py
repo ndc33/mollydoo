@@ -63,7 +63,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'simple_history.middleware.HistoryRequestMiddleware',
+    #'simple_history.middleware.HistoryRequestMiddleware',
 ]
 
 ROOT_URLCONF = 'mollydoo.urls'
@@ -138,7 +138,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-SIMPLE_HISTORY_REVERT_DISABLED = True
+#SIMPLE_HISTORY_REVERT_DISABLED = True
 
-USE_DJANGO_JQUERY = True #added
+#USE_DJANGO_JQUERY = True #added
 

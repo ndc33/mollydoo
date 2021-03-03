@@ -22,17 +22,23 @@ from .workstemplate import WorksTemplateInline, WorksOrderTemplate
 
 # ------print------
 
+
+
 class WorkPrintInline(WorksTemplateInline):
     tally = 'tally_print'
-    fields = ('xproduct', 'quantity', 'xnotes', tally, 'total', 'printed')
+    total = 'print_total'
+    complete = 'printed'
+    readonly_fields = ['xproduct','quantity','xnotes', total]
+    fields = ('xproduct', 'quantity', 'xnotes', tally, total, complete)
     process_lookup = 'product__type__print'
     verbose_name_plural = 'Print View'
 
+
 class WorkPrintView(Order):
-    
     class Meta:
         proxy = True
         verbose_name_plural = 'Works Print View'
+   
 
 @admin.register(WorkPrintView, site=site_proxy)
 class MPrintOrderAdmin(WorksOrderTemplate):
@@ -43,7 +49,10 @@ class MPrintOrderAdmin(WorksOrderTemplate):
 
 class WorkCutInline(WorksTemplateInline):
     tally = 'tally_cut'
-    fields = ('xproduct', 'quantity', 'xnotes', tally, 'total', 'cutx')
+    total = 'cut_total'
+    complete = 'cutx'
+    readonly_fields = ['xproduct','quantity','xnotes', total]
+    fields = ('xproduct', 'quantity', 'xnotes', tally, total, complete)
     process_lookup = 'product__type__cut'
     verbose_name_plural = 'Cut View'
 

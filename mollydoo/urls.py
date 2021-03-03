@@ -21,7 +21,7 @@ import debug_toolbar
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('erp/', erp_admin.urls),
-    path('chaining/', include('smart_selects.urls')),
+    #path('chaining/', include('smart_selects.urls')),
     path('__debug__/', include(debug_toolbar.urls)),
     #url(r'^chaining/', include('smart_selects.urls')),
     #path(r'_nested_admin/', include('nested_admin.urls')),

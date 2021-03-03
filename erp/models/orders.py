@@ -3,7 +3,8 @@ from django.utils.html import format_html
 import datetime
 
 from .company import Company
-from ..utils import ss, work_field_names, decorate
+from .batches import Container
+from ..utils import ss, work_field_names, decorate, sumtally
 
 #from simple_history.models import HistoricalRecords
 #from smart_selects.db_fields import ChainedForeignKey
@@ -75,6 +76,7 @@ class Order(models.Model):
     sentinal_text = "---press update to copy STD notes---"
     id = models.AutoField(primary_key=True, verbose_name="Order") # get verbose name on ID - not required
     company = models.ForeignKey(Company, related_name='order', on_delete=models.PROTECT)
+    container = models.ForeignKey(Container, related_name='order', on_delete=models.PROTECT)
     #active = models.BooleanField(default=True)
     OD = models.DateField(auto_now_add=False, blank=True, null=True)#, verbose_name="Order Date")
     LD = models.DateField(auto_now_add=False, blank=True, null=True)#, verbose_name="Lead Date")
@@ -143,17 +145,17 @@ class Order(models.Model):
         except:
             pass
         return dd
-    @property
-    @decorate(admin_order_field='batchorder__batch__MD')
-    def MD(self):
-        dd = None
-        try:
-            dd = self.batchorder.batch.MD
-            if dd:
-                dd = dd.strftime("%a %d %b")
-        except:
-            pass
-        return dd
+    # @property
+    # @decorate(admin_order_field='batchorder__batch__MD')
+    # def MD(self):
+    #     dd = None
+    #     try:
+    #         dd = self.batchorder.batch.MD
+    #         if dd:
+    #             dd = dd.strftime("%a %d %b")
+    #     except:
+    #         pass
+    #     return dd
     @property
     #@decorate(admin_order_field='status') # is required to return query
     def status(self):
@@ -175,7 +177,7 @@ class Order(models.Model):
         return self.company.own_products
     @property
     @decorate(short_description = "LD")
-    def LDs(self):
+    def LD_markup(self): # need to differentiate this with undeline or such
         color = '8c8c8c' if not self.LD_S else '000000'
         return format_html(
             '<span style="color: #{};">{}</span>',
@@ -184,13 +186,16 @@ class Order(models.Model):
         )
     @property
     @decorate(short_description = "CD")
-    def CDc(self):
+    def CD_markup(self):
         color = '8c8c8c' if not self.CD_C else '000000'
         return format_html(
             '<span style="color: #{};">{}</span>',
             color,
             self.CD,
         )
+    def tCM(self):
+        import ipdb; ipdb.set_trace()
+        return 1
 
 
 # class OrderItemManager(models.Manager):
@@ -216,7 +221,7 @@ class OrderItem(models.Model):
     pack = models.PositiveSmallIntegerField(default=0)
     # to be removed, will use unbound formfield with logic
     printed =  models.BooleanField(default=False, verbose_name='complete')
-    cutx =  models.BooleanField(default=False, verbose_name='cut')
+    cutx =  models.BooleanField(default=False, verbose_name='complete')
     welded =  models.BooleanField(default=False)
     stuffed =  models.BooleanField(default=False)
     packed =  models.BooleanField(default=False)
@@ -261,9 +266,9 @@ class OrderItem(models.Model):
     @property
     def DD(self):
         return self.order.DD
-    @property
-    def MD(self):
-        return self.order.MD
+    # @property
+    # def MD(self):
+    #     return self.order.MD
     @property
     @decorate(admin_order_field='order__id')
     def norder(self):
@@ -272,6 +277,14 @@ class OrderItem(models.Model):
         except:
             dd = None
         return dd
+    @property
+    @decorate(short_description = "Total")
+    def print_total(self):
+        return sumtally(self.tally_print)
+    @property
+    @decorate(short_description = "Total")
+    def cut_total(self):
+        return sumtally(self.tally_cut)
     # @property
     # def product_notes(self):
     #     return self.product.notes
@@ -279,6 +292,11 @@ class OrderItem(models.Model):
         if not self.id: # suprised it works-> alternative go through form clean
             self.xprice = self.product.price
             self.xnotes = self.product.notes
+        else:
+            qty = self.quantity
+            self.printed = True if (self.print_total > qty) else False
+            self.cutx = True if (self.cut_total > qty) else False
+        #import ipdb; ipdb.set_trace() 
             # self.xprint_notes = self.product.print_notes
             # self.xcut_notes = self.product.cut_notes
             # self.xpack_notes = self.product.pack_notes

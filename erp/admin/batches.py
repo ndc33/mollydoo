@@ -70,10 +70,12 @@ class BatchOrderInline(admin.TabularInline):
         # return super().get_formset(request, obj, **kwargs)
     def formfield_for_foreignkey(self, db_field, request, **kwargs): # in progress
         try: # todo try botch for add_item
+
             if db_field.name == "order":
+                #import pdb; pdb.set_trace() 
                 vv = int(request.resolver_match.kwargs['object_id']) 
                 vv = vv or -1
-                qq = models.Order.objects.filter(Q(batchorder__isnull = True) | Q(batchorder__batch = vv))
+                qq = Order.objects.filter(Q(batchorder__isnull = True) | Q(batchorder__batch = vv))
                 kwargs["queryset"] = qq
         except:
             pass

@@ -141,13 +141,13 @@ class OrderAdmin(admin2):
         'show_delete': False,
         'show_save': False
     }
-    list_display = ['id','company','OD','LD_markup','CD_markup', 'DD','batch_name','status','xx'] 
+    list_display = ['id','company','OD','LD_markup','CD_markup', 'DD','batch_name','status'] 
     fields = [
         ('id', 'delivered', 'invoiced', 'paid'),
         'company',
         ('OD','LD','LD_S'),
-        ('CD', 'CD_C','batch_info'),  
-        'notes','xorder_notes','xmanufacture_notes','xdelivery_notes','container'
+        ('CD', 'CD_C','batch_info','container'),  
+        'notes','xorder_notes','xmanufacture_notes','xdelivery_notes',
     ]
     #search_fields = ['foreign_key__related_fieldname'] # example - note the db field follow!
     inlines = [OrderItemInlineFixedKey, OrderItemInlineFreeKey]#[OrderItemInline]
@@ -158,7 +158,8 @@ class OrderAdmin(admin2):
         pass #js = ('erp/q.js',)
     #actions = [admin_order_shipped]
     def get_readonly_fields(self, request, obj=None):
-        default = ['id','batch_info','batch_name','DD','created_at','modified','status','xs1','LD_markup','CD_markup']
+        default = ['id','batch_info','batch_name','DD','created_at','modified','status','xs1','LD_markup','CD_markup']#'id',
+        #import pdb; pdb.set_trace()
         if obj: # existing record
             return default+['company']
         #self.autocomplete_fields = ['company'] # attempted hack

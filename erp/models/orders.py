@@ -76,7 +76,7 @@ class Order(models.Model):
     sentinal_text = "---press update to copy STD notes---"
     id = models.AutoField(primary_key=True, verbose_name="Order") # get verbose name on ID - not required
     company = models.ForeignKey(Company, related_name='order', on_delete=models.PROTECT)
-    container = models.ForeignKey(Container, related_name='order', on_delete=models.PROTECT)
+    container = models.ForeignKey(Container, related_name='order', default=1, on_delete=models.PROTECT)
     #active = models.BooleanField(default=True)
     OD = models.DateField(auto_now_add=False, blank=True, null=True)#, verbose_name="Order Date")
     LD = models.DateField(auto_now_add=False, blank=True, null=True)#, verbose_name="Lead Date")
@@ -94,7 +94,7 @@ class Order(models.Model):
     xdelivery_notes = models.TextField(blank=True, default=sentinal_text)
     created_at = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
-    xx = models.BooleanField()#null=True)
+    #xx = models.BooleanField()#null=True)
     class Meta:
         ordering = ('LD',)
     def save(self, *args, **kwargs):

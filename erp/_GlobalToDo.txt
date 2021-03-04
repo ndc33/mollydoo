@@ -27,4 +27,6 @@
 # route planner/map
 
 
+# https://github.com/jrief/django-admin-sortable2 looks interesting 
+#   (graphelli has this functionality integrated, may clash with general sorting etc)
 

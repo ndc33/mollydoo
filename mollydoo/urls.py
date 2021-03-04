@@ -17,6 +17,7 @@ from django.contrib import admin
 from erp.admin import erp_admin # broken
 from django.urls import path, include#, url
 import debug_toolbar
+from .settings import use_grappelli
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,5 +28,7 @@ urlpatterns = [
     #path(r'_nested_admin/', include('nested_admin.urls')),
     #url(r'^_nested_admin/', include('nested_admin.urls')),
 ]
+if use_grappelli:
+    urlpatterns.insert(0, path('grappelli/', include('grappelli.urls'))) # grappelli URLS grp
 
 

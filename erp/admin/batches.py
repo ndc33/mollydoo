@@ -23,8 +23,8 @@ class ContainerOrderInline(admin.TabularInline):
     extra = 0
     #show_change_link = True
     #list_display = ('title', 'type', 'active')
-    fields = ('order_link', 'company','OD', 'LD_markup', 'CD_markup') # 'id'
-    readonly_fields=('order_link','id', 'company','OD','LD_markup','CD_markup') # 'id',
+    fields = ('order_link', 'company','OD','LD_markup','CD_markup')#,'container') # will not show container key
+    readonly_fields=('order_link','id','company','OD','LD_markup','CD_markup') # 'id',
     class Media:
         css = {'all': ('erp/hide_inline_title.css', )}
     def has_add_permission(self, request, obj=None):
@@ -32,11 +32,12 @@ class ContainerOrderInline(admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
     def order_link(self, obj): 
-        #import ipdb; ipdb.set_trace() 
+        #import pdb; pdb.set_trace() 
         if obj:
             batch_obj = obj
             url = reverse(name_proxy +":erp_order_change", args=[batch_obj.id]) 
             return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, batch_obj)
+    
 
 
 @admin.register(Container, site=site_proxy)
@@ -48,7 +49,7 @@ class ContainerAdmin(admin2):
             #'show_delete': False
     }
     formfield_overrides = text_box(3, 70)
-    pass
+    
 
 
 
@@ -70,19 +71,42 @@ class BatchOrderInline(admin.TabularInline):
         # return super().get_formset(request, obj, **kwargs)
     def formfield_for_foreignkey(self, db_field, request, **kwargs): # in progress
         try: # todo try botch for add_item
-
             if db_field.name == "order":
                 #import pdb; pdb.set_trace() 
-                vv = int(request.resolver_match.kwargs['object_id']) 
+                vv = int(request.resolver_match.kwargs['object_id'])
+                #if vv:
                 vv = vv or -1
-                qq = Order.objects.filter(Q(batchorder__isnull = True) | Q(batchorder__batch = vv))
+                qq = Order.objects.filter(Q(batchorders__isnull = True) | Q(batchorders__batch = vv))
                 kwargs["queryset"] = qq
         except:
+            #kwargs["queryset"] = Order.objects.none() # added for fixed key 
             pass
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     def get_readonly_fields(self, request, obj=None):
+        #if obj:
         return ('company','CD_markup',)
+        #return ('order', 'company', 'CD_markup')
     # CD_C.boolean = True # keep info
+    def order_link(self, obj): 
+        #import pdb; pdb.set_trace() 
+        if obj:
+            url = reverse(name_proxy +":erp_order_change", args=[obj.order.id]) 
+            return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj.order)
+    order_link.short_description = 'Order'
+
+
+class BatchOrderInlineFixedKey(BatchOrderInline): # not used
+    fields = ('order_link', 'company', 'CD_markup') # added
+    readonly_fields = ('order_link', 'company', 'CD_markup',)
+    def has_add_permission(self, request, obj=None):
+        return False
+    
+class BatchOrderInlineFreeKey(BatchOrderInline): # not used
+    pass
+    verbose_name_plural = 'Add New Order Items'
+    def get_queryset(self, request): 
+        qs = super().get_queryset(request) 
+        return qs.none()
 
     
 @admin.register(Batch, site=site_proxy)
@@ -105,8 +129,9 @@ class BatchAdmin(admin2):
     #list_filter = ['created_at', 'status']
     #search_fields = ['first_name', 'address']
     inlines = [BatchOrderInline]
+    #inlines = [BatchOrderInlineFixedKey, BatchOrderInlineFreeKey]
     def orders(self, obj):
-        qq = Order.objects.filter(batchorder__batch__pk = obj.id)# query
+        qq = Order.objects.filter(batchorders__batch__pk = obj.id)# query
         return ['%s-%s'%(q.company.shortname, q.id) for q in qq]
    
   
@@ -133,7 +158,7 @@ class BatchOrderAdmin(admin2):
             try: # todo botch for add item bug
                 vv = self.myobject_id = request.resolver_match.kwargs['object_id'] # gives <Order: #>.
                 vv = vv or -1
-                qq = Order.objects.filter(Q(batchorder__isnull = True) | Q(batchorder = vv))
+                qq = Order.objects.filter(Q(batchorders__isnull = True) | Q(batchorders = vv))
                 kwargs["queryset"] = qq
             except:
                 pass
@@ -145,10 +170,10 @@ class BatchOrderAdmin(admin2):
 #         fields = '__all__' 
    
 #     def __init__(self, *args, **kwargs):
-#         #import ipdb; ipdb.set_trace()
+#         #import pdb; pdb.set_trace()
 #         # instance = kwargs.get('instance', None)
 #         # if instance and instance.pk:
-#         #     import ipdb; ipdb.set_trace()
+#         #     import pdb; pdb.set_trace()
 #             #self.fields['order'].widget.attrs['readonly'] = True
     
 #         #if kwargs.get('instance', None):
@@ -159,7 +184,7 @@ class BatchOrderAdmin(admin2):
 #         super().__init__(*args, **kwargs)
 #         instance = getattr(self, 'instance', None)
 #         if instance and instance.pk:
-#             pass #import ipdb; ipdb.set_trace()
+#             pass #import pdb; pdb.set_trace()
 #             #self.fields['order'].widget.attrs['readonly'] = True
 # #self.fields['image'].widget.attrs['hidden'] = True # in forms init
 
@@ -179,7 +204,7 @@ class BatchOrderAdmin(admin2):
 #         #     'notes': Textarea(attrs={'cols': 30, 'rows': 2}),
 #         # }
 
-#     #import ipdb; ipdb.set_trace()
+#     #import pdb; pdb.set_trace()
 #     #order_notes = forms.CharField(initial = 'readonly')
 #     def __init__(self, *args, **kwargs):
 #         #https://stackoverflow.com/questions/2988548/overriding-initial-value-in-modelform # works
@@ -187,7 +212,7 @@ class BatchOrderAdmin(admin2):
 #             pass
 #             # modelid =  kwargs['instance'].id
 #             # vv = Order.objects.get(id=modelid)
-#             # #import ipdb; ipdb.set_trace()
+#             # #import pdb; pdb.set_trace()
 #             # initial = kwargs.get('initial', {})
 #             # initial['notes'] = 'Test'
 #             # kwargs['initial'] = initial

@@ -19,8 +19,7 @@
 # features (further info in code comments)
 # - a lot of work required on query management (either model managers or better admin view get_queryset) [prefetch/annotations etc]
 # - simple messaging system along the lines of pinax notes or home made
-# - fixed nav bar, hold change-view save button, some navigation links
-# - for the new 'tally' system on works views - could do with some jquery magic 
+# - fixed nav bar, hold change-view save button, some navigation links 
 # - - to allow submission on pressing return, also keep scroll position (default is return to top)
 # html quote/sales order view to allow printing
 # product static files

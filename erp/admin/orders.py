@@ -2,8 +2,8 @@ from django import forms
 from django.db import models
 #from django.db.models import Q, F, Count
 from django.contrib import admin
-#from django.urls import reverse
-#from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.html import format_html
 #from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 #from django.contrib.admin.options import change_view
@@ -75,9 +75,18 @@ class ProductAdmin(admin2):
  
 
 
+class OrderItemAdminView(OrderItem):
+    class Meta:
+        proxy = True
+    # def __str__(self):
+    #     return '%s of %s' % (self.quantity, self.product)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+
 class OrderItemInline(admin.TabularInline):
 #class OrderItemInline(admin.StackedInline):
-    model = OrderItem
+    model = OrderItemAdminView
     extra = 0
     formfield_overrides = text_box(1, 30)
     fields = ('product','xnotes', 'xprice','quantity')
@@ -93,14 +102,14 @@ class OrderItemInline(admin.TabularInline):
         return formset
     # def price(self, obj):
     #     #return OrderItem.objects.get(id=obj.id)
-        return obj.product.price
+    #   return obj.product.price
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         try: # todo (botch for add view bug)
             if db_field.name == "product":
                 self.myobject_id = request.resolver_match.kwargs['object_id'] # gives <Order: #>.
                 if self.myobject_id:
                     companyid = Order.objects.get(pk=self.myobject_id).company_id
-                    #import ipdb; ipdb.set_trace()
+                    #import pdb; pdb.set_trace()
                     kwargs["queryset"] = Product.objects.filter(company__pk = companyid)
         except:
             kwargs["queryset"] = Product.objects.none() # why none instead of default all?
@@ -112,9 +121,16 @@ class OrderItemInline(admin.TabularInline):
 
 class OrderItemInlineFixedKey(OrderItemInline):
     pass
-    readonly_fields = ('product',)
+    fields = ('link_product','xnotes', 'xprice','quantity') # added
+    readonly_fields = ('link_product',)
     def has_add_permission(self, request, obj=None):
          return False
+    def link_product(self, obj): 
+        #import pdb; pdb.set_trace() 
+        if obj:
+            url = reverse(name_proxy +":erp_product_change", args=[obj.product.id]) 
+            return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj.product)
+    link_product.short_description = 'Product'
 
 class OrderItemInlineFreeKey(OrderItemInline):
     pass
@@ -122,9 +138,18 @@ class OrderItemInlineFreeKey(OrderItemInline):
     def get_queryset(self, request): 
         qs = super().get_queryset(request) #works
         #self.verbose_name_plural = self.vnp
-          #import ipdb; ipdb.set_trace()
+          #import pdb; pdb.set_trace()
         #qs=qs.none()
         return qs.none()#qs#qs.filter(product__type__code=self.ttt) #'CM'
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        if w:= form.base_fields.get('product'):
+            w.widget.can_change_related = False
+            w.widget.can_delete_related = False
+            w.widget.can_add_related = True
+            #setwidget(w.widget)
+        return formset
 
 
 
@@ -188,14 +213,14 @@ class OrderItemBatchFilter(admin.SimpleListFilter): # todo (none's not working)
     parameter_name = 'batch'
     def lookups(self, request, model_admin):
         qs = model_admin.get_queryset(request)
-        types = qs.values_list('order__batchorder__batch__title','order__batchorder__batch__title')
-        return list(types.order_by('order__batchorder__batch').distinct())
+        types = qs.values_list('order__batchorders__batch__title','order__batchorders__batch__title')
+        return list(types.order_by('order__batchorders__batch').distinct())
     def queryset(self, request, queryset):
         if self.value() is None:
             # todo return modified default filter set
             # return queryset.filter(state__complete=True)
             return queryset
-        return queryset.filter(order__batchorder__batch__title=self.value())
+        return queryset.filter(order__batchorders__batch__title=self.value())
 
 
 @admin.register(temp, site=site_proxy)
@@ -212,7 +237,8 @@ class OrderItemAdmin(admin2):
         return False
     def has_delete_permission(self, request, obj=None):
         return False
-    list_display = ('product','quantity','norder',*work_field_names)
+    wft = [wfd + '_tallytotal' for wfd in work_field_names]
+    list_display = ('product','quantity','norder',*wft) # work_field_names
     list_per_page = 50
     list_filter = (OrderItemTypeFilter, OrderItemOrderFilter, OrderItemBatchFilter)
     producttitle = True
@@ -221,13 +247,13 @@ class OrderItemAdmin(admin2):
         'show_delete': False,
         'title': 'Change this for a custom title.'
     }
-    def get_fields(self, request, obj=None):
-        wf = OrderItem.objects.get(id = obj.id).work_fields
-        return (('company','norder','batch'),'order_notes','xnotes',*wf)
-    def get_readonly_fields(self, request, obj=None):
-        default = ('company','product','quantity','norder',
-                        'order_notes','work_fields','batch')
-        return default
+    # def get_fields(self, request, obj=None):
+    #     wf = OrderItem.objects.get(id = obj.id).work_fields
+    #     return (('company','norder','batch'),'order_notes','xnotes',*wf)
+    # def get_readonly_fields(self, request, obj=None):
+    #     default = ('company','product','quantity','norder',
+    #                     'order_notes','work_fields','batch')
+    #    return default
     class Media:
         css = {'all': ('erp/label_width.css', )}
     class Meta:
@@ -285,12 +311,12 @@ class OrderItemAdmin(admin2):
 
 # def batch(self, obj): # now use the model property -> keep
     #     if obj:
-    #         batch_obj = obj.batchorder.batch
+    #         batch_obj = obj.batchorders.batch
     #         ##url = reverse("admin:erp_batch_changelist")
     #         url = reverse(name_proxy +":erp_batch_change",  args=[batch_obj.id]) 
     #         ##return obj.batchitem.batch
     #         return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, batch_obj)
-    #batch.admin_order_field = 'batchorder__batch__dispatch_date'
+    #batch.admin_order_field = 'batchorders__batch__dispatch_date'
     #batch.empty_value_display = 'SHELF' # not working
     #.short_description = "only for admin functions!"
 
@@ -333,7 +359,7 @@ class OrderAdminForm(forms.ModelForm):
             pass
             # modelid =  kwargs['instance'].id
             # vv = Order.objects.get(id=modelid)
-            # #import ipdb; ipdb.set_trace()
+            # #import pdb; pdb.set_trace()
             # initial = kwargs.get('initial', {})
             # initial['notes'] = 'Test'
             # kwargs['initial'] = initial # very interesting
@@ -342,7 +368,7 @@ class OrderAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs) # some changes required before, some after __init__
         try:
             pass
-            #import ipdb; ipdb.set_trace()
+            #import pdb; pdb.set_trace()
             #instance = getattr(self, 'instance', None)
             # if instance and instance.pk:
             #     self.fields['company'].widget.attrs={'readonly':'readonly'} # True

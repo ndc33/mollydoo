@@ -55,7 +55,7 @@ class WorksTestViewItemInline(admin.StackedInline):
     def get_queryset(self, request): 
         qs = super().get_queryset(request) #works
         self.verbose_name_plural = self.vnp
-          #import ipdb; ipdb.set_trace()  
+          #import pdb; pdb.set_trace()  
         return qs.filter(product__type__code=self.ttt) #e.g. 'CM'
 
 
@@ -145,15 +145,15 @@ class MPrintOOrderItemInline(admin.TabularInline):
     def get_queryset(self, request): 
         qs = super().get_queryset(request) #works
         self.verbose_name_plural = self.vnp
-          #import ipdb; ipdb.set_trace()  
+          #import pdb; pdb.set_trace()  
         return qs.filter(product__type__code__in=self.ttt) #'CM'
     def xproduct(self, obj): 
-        #import ipdb; ipdb.set_trace() 
+        #import pdb; pdb.set_trace() 
         if obj:
             batch_obj = obj.product
             ##url = reverse("admin:erp_batch_changelist")
             url = reverse(name_proxy +":erp_product_change", args=[batch_obj.id]) 
-            #import ipdb; ipdb.set_trace() 
+            #import pdb; pdb.set_trace() 
             return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, batch_obj)
     def total(self, obj):
         total = 'error in tally'
@@ -167,7 +167,7 @@ class MPrintOOrderItemInline(admin.TabularInline):
 @admin.register(MPrintOrder, site=site_proxy)
 class MPrintOrderAdmin(admin2):
     #relevantcodes = list(ProductType.objects.filter(print=True).values_list('code', flat=True))
-    #import ipdb; ipdb.set_trace()
+    #import pdb; pdb.set_trace()
     id_obj = None
     save_on_top = True
     listviewtitle = 'custom title - list view' # place holder
@@ -209,7 +209,7 @@ class MPrintOrderAdmin(admin2):
     #MD.admin_order_field = 'batchorder__batch__MD'
     def get_queryset(self, request): 
         qs = super().get_queryset(request) #works
-        #import ipdb; ipdb.set_trace()  
+        #import pdb; pdb.set_trace()  
         return qs.filter(item__product__type__print=True)#.distinct().all()
     #date_hierarchy = 'MD'
     def jobs_done(sel, obj):
@@ -237,7 +237,7 @@ class MPrintOrderAdmin(admin2):
     #     # create seperate inline for each product class (so we can format each row distinctly)
     #     for ptype in ProductType.objects.filter(pk__in = dd).all():
     #         # e.g. type('CM', (MOOrderItemInline,), {'ttt':'CM','vnp':"Changing Mats"})
-    #         #import ipdb; ipdb.set_trace()
+    #         #import pdb; pdb.set_trace()
     #         qq = type(
     #             ptype.code, (MPrintOOrderItemInline,), 
     #             {'ttt':ptype.code,'vnp':ptype.title, 'rofields':ptype.workfields_not_defined}

@@ -1,44 +1,37 @@
-#------------manufacturing views-----------------
+#------------inherited by works views-----------------
 
 from django import forms
 #from django.db import models
-from django.db.models import Q, F, Count
+#from django.db.models import Q, F, Count
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 #from django.utils.safestring import mark_safe
-from django.contrib.auth.models import User, Group
+#from django.contrib.auth.models import User, Group
 #from django.contrib.admin.options import change_view
 #from django.shortcuts import redirect
 
-from ..models import Order, OrderItem, ProductType
+#from ..models import Order#, OrderItem, ProductType
 #from ..models import Product,
 
 from .setup import erp_admin, site_proxy, name_proxy
 from .setup import admin2, text_box
 
-from ..utils import sumtally, ss, setwidget, work_field_names
+from ..utils import  ss, setwidget# , work_field_names #sumtally,
 
 # likely much cleaner/simpler ways of obtaing the following functionilty
-
-class OrderItemWorksView(OrderItem): # required for different __str__
-    class Meta:
-        proxy = True
-    def __str__(self):
-        return '%s of %s' % (self.quantity, self.product) 
-    # def save(self, *args, **kwargs):
-    #     if not self.id: 
-    #         qty = self.quantity
-    #         self.printed = True if (self.total > qty) else False
-    #     import ipdb; ipdb.set_trace() 
-    #     super().save(*args, **kwargs)
     
+def link_product(product_obj): 
+    #batch_obj = obj.product
+    url = reverse(name_proxy +":erp_product_change", args=[product_obj.id]) 
+    return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, product_obj)
+link_product.short_description = 'Product'      
 
 class WorksTemplateInline(admin.TabularInline):
-    model = OrderItemWorksView
+    #model = #-> defined on inheritance
     extra = 0
     description = True #?
-    readonly_fields = ['xproduct','quantity','xnotes','total']# + self.rofields
+    readonly_fields = ['link_product','quantity','xnotes','total']# + self.rofields
     class Media:
         css = {'all': ('erp/hide_inline_title.css',)} #'erp/hide_inline_title.css',
         #js = ('erp/collapse_open.js',)
@@ -54,21 +47,15 @@ class WorksTemplateInline(admin.TabularInline):
         if hasattr(self, 'process_lookup'): 
             qs = qs.filter(**{self.process_lookup : True})#.distinct().all()
         return qs #.filter(**{self.process_lookup : True})
-    def xproduct(self, obj): 
-        #import ipdb; ipdb.set_trace() 
+    def link_product(self, obj): 
         if obj:
-            batch_obj = obj.product
-            url = reverse(name_proxy +":erp_product_change", args=[batch_obj.id]) 
-            return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, batch_obj)
-    # def total(self, obj):
-    #     return sumtally(getattr(obj, self.tally))
-    
+            return link_product(obj.product)
 
 
 class WorksOrderTemplate(admin2):
-    id_obj = None
+    #id_obj = None # ???
     save_on_top = True
-    listviewtitle = 'custom title - list view' # place holder
+    #listviewtitle = 'custom title - list view' # place holder
     ordertitle = True
     suppress_form_controls = {
         'show_save_and_add_another': False,

@@ -3,7 +3,7 @@ from django.db import models
 #from django.db.models import Q, F, Count
 from django.contrib import admin
 from django.urls import reverse
-#from django.utils.html import format_html
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 #from django.contrib.admin.options import change_view
@@ -67,7 +67,7 @@ class admin2(admin.ModelAdmin): # SimpleHistoryAdmin
             # Note from docs: the label suffix is added only if the last character of the label isn’t a punctuation character
             if form.base_fields.get(field).required:
                 form.base_fields.get(field).label_suffix = ' *:' # for play/example only
-            #import ipdb; ipdb.set_trace()
+            #import pdb; pdb.set_trace()
         return form
     def xs1(self, obj):
         # used for spacing before using .css changes 
@@ -75,8 +75,15 @@ class admin2(admin.ModelAdmin): # SimpleHistoryAdmin
     xs3 = xs2 = xs1
     xs1.short_description = '' 
     def changelist_view(self, request, extra_context=None):
-        if self.listviewtitle:
-            extra_context = {'title': self.listviewtitle}
+        if self.listviewtitle: # todo finish
+            color = '000000'#'787878'
+            qq = format_html(
+                #('{} <span style="color: #{};">&nbsp<sub>{}</sub></span>'
+            '<span style="color: #{};">{}</span>',
+            color,
+            self.listviewtitle,
+            )
+            extra_context = {'title': qq}#self.listviewtitle}
         return super().changelist_view(request, extra_context=extra_context)
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
         if (self.producttitle): # override title (since obj required)

@@ -25,9 +25,9 @@ class Address(models.Model):
         (DELIVERY, 'Delivery'),
     )
     #  limit_choices_to={'is_staff': True} # example
-    company = models.ForeignKey('COMPANY', related_name='address', on_delete=models.PROTECT)
+    company = models.ForeignKey('COMPANY', related_name='addresses', on_delete=models.PROTECT)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=INVOICE)
-    name = models.CharField(max_length=100, blank=True, default='') 
+    name = models.CharField(max_length=100)#, blank=True, default='') 
     address = models.TextField() 
     postcode = models.CharField(max_length=9)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -93,7 +93,7 @@ class Company(models.Model):
 
 
 class Contact(models.Model):
-    company = models.ForeignKey(Company, related_name='contact', on_delete=models.PROTECT)
+    company = models.ForeignKey(Company, related_name='contacts', on_delete=models.PROTECT)
     name = models.CharField(max_length=60)
     role = models.CharField(max_length=60)
     mobile_number = models.CharField(max_length=20, blank=True, default='')

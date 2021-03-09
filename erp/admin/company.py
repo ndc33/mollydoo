@@ -2,8 +2,8 @@ from django import forms
 from django.db import models
 #from django.db.models import Q, F, Count
 from django.contrib import admin
-#from django.urls import reverse
-#from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.html import format_html
 #from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 #from django.contrib.admin.options import change_view
@@ -12,7 +12,8 @@ from django.contrib.auth.models import User, Group
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin, ImportExportMixin
 
-from ..models import Address, Company, Contact, Product, SpecNote
+from ..models import Address, Company, Contact, Product, Order#, SpecNote
+from .workstemplate import link_product
 
 from .setup import erp_admin, site_proxy, name_proxy
 from .setup import admin2, text_box
@@ -47,6 +48,25 @@ class AddressInline(admin.StackedInline):
     def has_add_permission(self, request, obj=None):
          return False
     
+class OrderInline(admin.TabularInline):
+    model = Order
+    extra = 0
+    fields = ['link_id','company','OD','LD_markup','CD_markup','batch_info','status'] 
+    readonly_fields = ['link_id','company','OD','LD_markup','CD_markup', 'batch_info','status'] 
+    class Media:
+        css = {'all': ('erp/hide_inline_title.css', )}
+    def has_change_permission(self, request, obj=None):
+        return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+    def has_add_permission(self, request, obj=None):
+         return False
+    def link_id(self, obj): 
+        if obj:
+            url = reverse(name_proxy +":erp_order_change", args=[obj.id]) 
+        return format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+    link_id.short_description = '<Order>' 
+
 
 class AddressAdmin(ImportExportMixin, admin2):
     #resource_class = AddressResource # keep
@@ -68,27 +88,32 @@ class ContactAdmin(admin2):
     remove_pk_controls = ['company']
     
 
-@admin.register(SpecNote, site=site_proxy)
-class ContactAdmin(admin2):
-    remove_pk_controls = ['company', 'product']
+# @admin.register(SpecNote, site=site_proxy)
+# class ContactAdmin(admin2):
+#     remove_pk_controls = ['company', 'product']
 
 
 class ProductInline(admin.TabularInline):
     model = Product
     extra = 0
-    fields = ('title', 'type', 'price', 'notes', 'active')
+    fields = ('link_product', 'type', 'price', 'notes', 'active') # 'title',
+    readonly_fields = ['link_product']
     def has_delete_permission(self, request, obj=None):
          return False
     def has_change_permission(self, request, obj=None):
         return False
     def has_add_permission(self, request, obj=None):
         return False
+    def link_product(self, obj): 
+        if obj:
+            return link_product(obj)
     # keep following for info
     # classes = ['collapse']
     # def response_add(self, request, obj, post_url_continue=None):
     #     return redirect('/erp/erp/product/add/')
     # def response_change(self, request, obj):
     #     return redirect('/erp/erp/product/add/')
+   
 
 
 @admin.register(Company, site=site_proxy)
@@ -119,7 +144,7 @@ class CompanyAdmin(admin2):
         if not obj: 
             # Return no inlines when obj is being created. For info, see also add_view() and change_view()   
             return []
-        return [ContactInline, AddressInline, ProductInline]
+        return [ContactInline, AddressInline, ProductInline, OrderInline]
    
 # ----------- ignore--------------------
 

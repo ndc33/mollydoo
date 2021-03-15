@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     #'simple_history',
   #  'nested_admin',
     'import_export',
+    'admin_totals',
+    'totalsum',
    # 'smart_selects',
     #'debug_toolbar',
   #  'stuff',

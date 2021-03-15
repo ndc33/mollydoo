@@ -1,3 +1,4 @@
+from .specnotes import *
 from .company import *
 from .product import *
 from .orderitem import *

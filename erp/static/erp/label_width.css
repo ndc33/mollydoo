@@ -117,3 +117,6 @@ h1 {
     font-size: 24px;
     color: rgb(92, 84, 84);
 }
+tr.totals {
+    background: #CAFFED;
+}

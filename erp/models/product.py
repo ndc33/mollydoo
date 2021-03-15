@@ -4,9 +4,32 @@ from django.db import models
 
 #from .company import Company
 #from .batches import Container
-from ..utils import ss, work_field_names, decorate, ProductCategories #, sumtally, get_roll_groups
+from ..utils import ss, work_field_names, decorate#, ProductCategories #, sumtally, get_roll_groups
 
 #ProductCategories = ['CM','ARM','XPVC','M','SPRUNG','OTHER']
+
+
+class ProductDisplayCategory(models.Manager):
+    ''' optimize queries with prfetches and annotations'''
+    # modest improvement
+    def get_queryset(self):
+        qs =  super().get_queryset()
+        #qs = qs.select_related('product__type', 'order', 'order__container','order__company')
+        #qs = qs.prefetch_related(models.Prefetch(''))
+        qs = qs.prefetch_related('type')
+        return qs
+
+class ProductDisplayCategory(models.Model):
+    objects = ProductDisplayCategory()
+    title = models.CharField(max_length=30, blank=True, default='')
+    class Meta:
+        verbose_name_plural = ' Product Display Categories'
+    def type_count(self):
+        return self.type.count()
+    def __str__(self):
+        return self.title
+
+ProductCategories = list(ProductDisplayCategory.objects.all().values_list('title', flat=True))
 
 class ProductType(models.Model):
     # CATEGORY_CHOICES = (
@@ -17,11 +40,11 @@ class ProductType(models.Model):
     #     ('SPRUNG',    'SPRUNG'),
     #     ('OTHER',     'OTHER')
     # )
-    CATEGORY_CHOICES = zip(ProductCategories,ProductCategories)
+    #CATEGORY_CHOICES = zip(ProductCategories, ProductCategories)
 
     title = models.CharField(max_length=30, blank=True, default='')
-    code = models.CharField(max_length=10, blank=True, default='')
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    #category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    category = models.ForeignKey('ProductDisplayCategory', related_name='type', on_delete=models.PROTECT, blank=True, null=True)
     # ensure utils.work_field_names is kept upto date with these
     print = models.BooleanField(default=False)
     cut = models.BooleanField(default=False)
@@ -36,19 +59,8 @@ class ProductType(models.Model):
     @property
     def workfields_not_defined(self):
         return [x for x in work_field_names if not getattr(self, x)]
-
-
-# class SpecNote(models.Model): # not used - in progress
-#     ptypes = list(ProductType.objects.values_list('code', flat=True))
-#     qqq = ['office', 'delivery', 'all', 'operations'] + work_field_names + ptypes
-#     CHOICES = [(j,j) for j in qqq]
-#     company = models.ForeignKey('Company', related_name='specnotes', on_delete=models.PROTECT)
-#     #type = models.ForeignKey(ProductType, related_name='specnotes', on_delete=models.PROTECT)
-#     product = models.ForeignKey('Product', related_name='specnotes', on_delete=models.PROTECT, blank=True, null=True)
-#     type = models.CharField(max_length=20, choices=CHOICES)
-#     note = models.TextField() 
-#     def __str__(self):
-#         return '%s: %s' % (self.company.shortname, self.type)
+    def product_count(self):
+        return self.products.count()
 
 
 
@@ -67,7 +79,7 @@ class Product(models.Model):
     SKU = models.CharField(max_length=20, blank=True, default='')
     barcode = models.CharField(max_length=20, blank=True, default='')
     #
-    overprint = models.SmallIntegerField(blank=True, null=True)
+    overprints = models.SmallIntegerField(blank=True, null=True)
     #
     created_at = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -76,4 +88,4 @@ class Product(models.Model):
         models.UniqueConstraint(fields=['company', 'type', 'title'], name='unique_product')
         ]
     def __str__(self):
-        return '[%s] %s' % (self.type.code, self.title)
+        return '%s' % (self.title)

@@ -1,0 +1,55 @@
+[format]
+page headings now have extra info and markup -> need to modify the templates to add the extra info instead
+
+
+[interface]
+template for creating sales orders /quotes from the order 
+messaging
+delivery process view
+maps (route planning) view
+fixed nabar with save button
+possible add ui markdown format for notes etc
+**forms are submitted automaticlly on pressing return** (which is good) 
+also need keep scroll position (default is return to top)?
+
+
+
+[DB/models]
+need some way of marking certain records as protected
+softdelete (no external packages)
+model history (maybe reversion)
+sort the address mess
+put repeatedly called data into query annotations etc
+possibly make work processes front end defineable
+need to either change the tally to additive or lock db and check changes from displayed data on submit
+need media files + interface (print etc)
+order/product-process notes are a mess, perhaps make fixed/definable (like product types)
+should create a filesystem copy of all principle documents as paper based backup 
+more field indexes (e.g. active/deleted)
+query directly on external objects when not changing often instead of prefetch etc
+
+
+[logic]
+need to make sure we can easily add arbitrary sales-order line-items
+
+
+[external]
+xero integration
+
+[security and view limiting]
+add group/role level permisions
+
+[deployment]
+postgres
+multiple-workers
+workstations or tablets
+
+
+[later]
+optimisations
+maybe more comprehensive search system
+asset tracking model with calender and reminders
+multi premisis
+BOM with costing
+inventory tracking
+VPN access with limited roles

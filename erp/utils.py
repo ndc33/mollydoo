@@ -2,12 +2,16 @@
 # utils origionally used when running into circular references for the first time. May rework 
 import regex as rex
 import datetime
+#from .models import ProductCategory
 
 ss = "&nbsp"
 
 work_field_names = ['print','cut','weld','stuff','pack']
-ProductCategories = ['CM','ARM','XPVC','M','SPRUNG','OTHER'] 
+work_field_names_plural = {'print':'printed','cut':'cut','weld':'welded','stuff':'stuffed','pack':'packed'}
+#ProductCategories = ['CM','ARM','XPVC','M','SPRUNG','OTHER'] 
+#ProductCategories = ['PVC Weld','PVC Sewn','PVC Print','M','Sprung','OTHER'] 
 # alternative Query for above ProductType._meta.get_field('category').choices
+
 
 def decorate(**kwargs):
     def wrap(function):
@@ -78,7 +82,7 @@ def setwidget(widget):
     widget.can_change_related = False
     widget.can_delete_related = False
 
-def fixdate(obj):
+def shortdate(obj):
     if isinstance(obj, datetime.date):
         return obj.strftime("%a %d %b")
     return obj

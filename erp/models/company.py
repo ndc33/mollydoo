@@ -42,6 +42,16 @@ class Address(models.Model):
         return self.name
 
 
+class CompanyManager(models.Manager):
+    ''' optimize queries with prfetches and annotations'''
+    def get_queryset(self):
+        qs =  super().get_queryset()
+        #qs = qs.prefetch_related('orders')
+        #qs = qs.prefetch_related('products')
+        #qs = qs.select_related('order__company')
+        #qs = qs.select_related('batch')
+        return qs
+
 class Company(models.Model):
 #class Place(PolymorphicModel):
     CUSTOMER = 'Customer'
@@ -63,7 +73,7 @@ class Company(models.Model):
         (LEAD, 'Lead'),
         (ARCHIVED, 'Archived')
     )
-
+    objects = CompanyManager()
     name = models.CharField(max_length=100, unique = True)
     shortname = models.CharField(max_length=20)#, unique = True)
     codename = models.CharField(max_length=4)#, unique = True, null=True)

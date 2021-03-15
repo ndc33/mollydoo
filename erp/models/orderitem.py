@@ -116,30 +116,24 @@ class OrderItemRelatedModelMethods():
     @property
     def work_fields(self):
         return self.product.type.workfields_defined
-    @property
-    def batch_info(self):
-        return self.order.batch_info
-    @property
-    def batch(self):
-        return self.order.batch 
-    @property
-    def batch_name(self):
-        return self.order.batch_name
+    @ property
+    def container(self):
+        return self.order.container
     @property
     def DD(self):
-        return self.order.DD
+        return self.order.container.dispatch_date
     @property
-    @decorate(admin_order_field='order__id')
-    def norder(self):
-        try:
-            dd = self.order.id 
-        except:
-            dd = None
-        return dd
+    def category(self):
+        # not used
+        #import pdb; pdb.set_trace() 
+        return self.product.type.category.title
     @property
-    def overprint(self):
+    def type(self):
+        return self.product.type.title
+    @property
+    def overprints(self):
         '''only called by works-print-view'''
-        return self.product.overprint
+        return self.product.overprints or ''
 
 
 class OrderItemManager(models.Manager):
@@ -147,15 +141,19 @@ class OrderItemManager(models.Manager):
     # modest improvement
     def get_queryset(self):
         qs =  super().get_queryset()
-        qs = qs.annotate(_ppp=models.Value(1, output_field=models.IntegerField())) # testing
-        ###qs = qs.prefetch_related(models.Prefetch('order__DD'))
-        qs = qs.select_related('order__batchorders__batch')
-        qs = qs.select_related('product__type')
+        #qs = qs.annotate(_ppp=models.Value(1, output_field=models.IntegerField())) # testing
+        #qs = qs.prefetch_related(models.Prefetch('order__DD'))
+        #qs = qs.select_related('order__batchorders__batch')
+        qs = qs.select_related('product__type', 'order', 'order__container','order__company')
+        #qs = qs.prefetch_related(models.Prefetch(''))
+        #no use: 'product__type__category'
         return qs
 
 
-
-class OrderItem(models.Model, OrderItemRelatedModelMethods, OrderItemTotalSummaryMethods, OrderItemRemaingMethods):
+class OrderItem(models.Model, 
+    OrderItemRelatedModelMethods, 
+    OrderItemTotalSummaryMethods, 
+    OrderItemRemaingMethods):
     #
     objects = OrderItemManager()
     order = models.ForeignKey('Order', related_name='items', on_delete=models.CASCADE)
@@ -174,11 +172,11 @@ class OrderItem(models.Model, OrderItemRelatedModelMethods, OrderItemTotalSummar
     tally_stuff = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
     tally_pack = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
     #
-    print_total = models.PositiveSmallIntegerField(default=0, verbose_name='done')#blank=True, null=True)
-    cut_total = models.PositiveSmallIntegerField(default=0)#blank=True, null=True)
-    weld_total = models.PositiveSmallIntegerField(default=0)#blank=True, null=True)
-    stuff_total = models.PositiveSmallIntegerField(default=0)#blank=True, null=True)
-    pack_total = models.PositiveSmallIntegerField(default=0)#blank=True, null=True)
+    print_total = models.PositiveSmallIntegerField(default=0, verbose_name='printed')#blank=True, null=True)
+    cut_total = models.PositiveSmallIntegerField(default=0, verbose_name='cut')#blank=True, null=True)
+    weld_total = models.PositiveSmallIntegerField(default=0, verbose_name='welded')#blank=True, null=True)
+    stuff_total = models.PositiveSmallIntegerField(default=0, verbose_name='stuffed')#blank=True, null=True)
+    pack_total = models.PositiveSmallIntegerField(default=0, verbose_name='packed')#blank=True, null=True)
     # TODO need to remove and make this a writable form field?
     item_complete = models.BooleanField(default=False) # messy
     #
@@ -191,7 +189,14 @@ class OrderItem(models.Model, OrderItemRelatedModelMethods, OrderItemTotalSummar
         #import pdb; pdb.set_trace() 
         return self._ppp
     def __str__(self):
-        return '%s' % self.id
+        if self.id:
+            return '%s' % self.id
+        else:
+            return 'total'
+    @property
+    @decorate(short_description = "quantity")
+    def quantity_html(self):
+        return format_html('<b>{}</b>', self.quantity)
     def save(self, *args, **kwargs):
         if self._state.adding is True:  #if not self.id: 
             # pre form-filling wont work if we do not have FK already saved
@@ -203,7 +208,6 @@ class OrderItem(models.Model, OrderItemRelatedModelMethods, OrderItemTotalSummar
                 pass
         else:
             pass
-         
         super().save(*args, **kwargs)
 
 

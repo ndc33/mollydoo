@@ -21,35 +21,5 @@ Order
 OrderItem
 	fk Order 
 	fk Product
-Batch
-	R batchitem [batchorder]
-BatchItem
-	fk Batch 
-	121 Order [batchorder]
-
-# just for sketching ideas
-#order: get a total of product catagories
-for orderitem in order:
-	type = orderitem_type
-	if type not in typical_products: type = 'other'
-	product_type_totals[type] += orderitem.quantity
-->need to prefecth values: orderitems.product.type, orderitems.qty
-
-# again for completed items now on type AND process 
-for orderitem in order:
-	type = orderitem_type
-	if type not in typical_products: type = 'other'
-	for process in processes:
-		# could use a dict of process /function name or standardize for string
-		if type has process:
-			# cannot call total function directly in query, maybe stick with 'complete' for now
-			product_type_process_totals[type][process] += orderitem.[process].total
-			product_type_process_complete[type][process]= orderitem.[process].complete
--> may as well combine this with above, no further prefetch.
-
-#order: determine processes completed
-for orderitem in order:
-
-ops views:
-#list view page (list of orders) dont know
-# change view page -> like the worksviews, this time showning progress (totals) of all processes
+Container
+missing

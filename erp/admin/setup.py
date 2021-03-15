@@ -13,10 +13,6 @@ from django.contrib.auth.models import User, Group
 #from import_export import resources
 #from import_export.admin import ImportExportModelAdmin, ImportExportMixin
 #from django.apps import apps
-#ModelName = apps.get_model('app_name', 'ModelName')
-
-#from erp import models as xmodels
-#from ..models import Dummy
 
 from ..utils import ss, setwidget
 
@@ -43,123 +39,51 @@ class ERP(admin.AdminSite):
 erp_admin = ERP(name='erp')
 site_proxy = erp_admin
 name_proxy = 'erp' #'admin'
-
-class admin2(admin.ModelAdmin): # SimpleHistoryAdmin 
-    # NOTE the 5 vars here used as directives, they are used throught 
-    remove_pk_controls = []
-    listviewtitle = None
-    suppress_form_controls = {}
-    producttitle = False
-    ordertitle = False
-    modify_labels = {}
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs) 
-        for pkn in self.remove_pk_controls:
-            # get rid of annoying add/change etc icons next to primary key
-            if w:= form.base_fields.get(pkn):
-                setwidget(w.widget)
-            # if pkn == 'company':
-            #     widget.attrs['readonly'] = True 
-        for key,value in self.modify_labels.items():
-            # overwrite labels
-            form.base_fields[key].label = value 
-        for field in form.base_fields: # keep for info
-            # Note from docs: the label suffix is added only if the last character of the label isn’t a punctuation character
-            if form.base_fields.get(field).required:
-                form.base_fields.get(field).label_suffix = ' *:' # for play/example only
-            #import pdb; pdb.set_trace()
-        return form
-    def xs1(self, obj):
-        # used for spacing before using .css changes 
-        return ''
-    xs3 = xs2 = xs1
-    xs1.short_description = '' 
-    def changelist_view(self, request, extra_context=None):
-        if self.listviewtitle: # todo finish
-            color = '000000'#'787878'
-            qq = format_html(
-                #('{} <span style="color: #{};">&nbsp<sub>{}</sub></span>'
-            '<span style="color: #{};">{}</span>',
-            color,
-            self.listviewtitle,
-            )
-            extra_context = {'title': qq}#self.listviewtitle}
-        return super().changelist_view(request, extra_context=extra_context)
-    def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
-        if (self.producttitle): # override title (since obj required)
-            self.suppress_form_controls['title'] = '%s of %s' % (obj.quantity, obj.product)
-        if (self.ordertitle): # override title (since obj required)
-            try: 
-                batch_title = obj.batchorder.batch.title
-            except:
-                batch_title = None
-            # ugly botch to fit with current architecture
-            self.suppress_form_controls['title'] = mark_safe(
-                '%s%s Order: %s%s Batch: %s' % 
-                (obj.company.name, ss*18, obj.id, ss*36, obj.batch_info)
-                )
-        context.update({**self.suppress_form_controls})
-        return super().render_change_form(request, context, add, change, form_url, obj)
-
-
-
-# --------- ignore below -------------
-
-# further examples of formfield_overrides
-#models.IntegerField: {'widget': widgets.NumberInput(attrs={'size':'5'})},
-#models.TextField: {'widget': widgets.Textarea(attrs={'rows':4, 'cols':40})},
-#models.CharField: {'widget': widgets.TextInput(attrs={'size': '10'})}
-
-# from functools import wraps
 """
-class AddressResource(resources.ModelResource): #import-export
-    class Meta:
-        model = Address
-        #exclude = ('created_at','modified') # check required or desirable
-        skip_unchanged = True
-        report_skipped = False
+def get_app_list(self, request):
+    '''
+    Return a sorted list of all the installed apps that have been
+    registered in this site.
+    '''
+    ordering = {
+        "Event heros": 1,
+        "Event villains": 2,
+        "Epics": 3,
+        "Events": 4
+    }
+    app_dict = self._build_app_dict(request)
+    # a.sort(key=lambda x: b.index(x[0]))
+    # Sort the apps alphabetically.
+    app_list = sorted(app_dict.values(), key=lambda x: x['name'].lower())
+
+    # Sort the models alphabetically within each app.
+    for app in app_list:
+        app['models'].sort(key=lambda x: ordering[x['name']])
+
+        return app_list
 """
-# class AddAdmin(ImportExportModelAdmin):
-#     resource_class = AddressResource
 
-# erp_admin.register(Address, AddAdmin)
+def order_link(obj): 
+    url = reverse(name_proxy +":erp_order_change", args=[obj.id]) 
+    link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+    return mark_safe(link)
+order_link.short_description = 'Order'
 
-# def create_modeladmin(modeladmin, model, name = None):
-#     class  Meta:
-#         proxy = True
-#         app_label = model._meta.app_label
+def company_link(obj): 
+    url = reverse(name_proxy +":erp_company_change", args=[obj.id]) 
+    link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+    return mark_safe(link)
+company_link.short_description = 'company'
 
-#     attrs = {'__module__': '', 'Meta': Meta}
+def product_link(obj, style = "font-weight:bold"): 
+    #style = "font-weight:bold;text-decoration:line-through"
+    url = reverse(name_proxy +":erp_product_change", args=[obj.id]) 
+    link = format_html('<a style={} href="{}">{} </a>', style, url, obj)
+    return mark_safe(link)
+product_link.short_description = 'Product'      
 
-#     newmodel = type(name, (model,), attrs)
-
-#     admin.site.register(newmodel, modeladmin)
-#     return modeladmin
-
-# class MyDummyAdmin(DummyAdmin):
-#     def get_queryset(self, request):
-#         return self.model.objects.filter(user = request.user)
-
-# create_modeladmin(MyDummyAdmin, name='my-dummy', model=Dummy)
-# create_modeladmin(DummyAdmin, name='dummy', model=Dummy)
-
-#@admin.register(Dummy, site=admin.sites.site)
-# class DummyAdmin(admin.ModelAdmin):
-#     # for example note
-#     def changelist_view(self, request, extra_context=None):
-#         # Add extra context data to pass to change list template
-#         extra_context = extra_context or {}
-#         extra_context['my_store_data'] = {'onsale':['Item 1','Item 2']}
-#         # Execute default logic from parent class changelist_view()
-#         return super().changelist_view(
-#             request, extra_context=extra_context
-#         ) # could insert via html via read_only list_item but no point?
-#     pass
-    
-# class MyDummy(models.Dummy):
-#     class Meta:
-#         proxy = True
-
-# #@admin.register(MyDummy, site=admin.sites.site)
-# class MyDummyAdmin(DummyAdmin):
-#     pass
+def container_link(obj): 
+    url = reverse(name_proxy +":erp_container_change", args=[obj.id]) 
+    link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+    return mark_safe(link)
+container_link.short_description = 'Container'

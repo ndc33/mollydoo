@@ -14,7 +14,7 @@ from django.contrib.auth.models import User, Group
 #from import_export.admin import ImportExportModelAdmin, ImportExportMixin
 #from django.apps import apps
 
-from ..utils import ss, setwidget
+from ..utils import ss, setwidget, get_related_field#, AccessMixin#, 
 
 # prefetch notes
 # https://hansonkd.medium.com/performance-problems-in-the-django-orm-1f62b3d04785
@@ -39,6 +39,8 @@ class ERP(admin.AdminSite):
 erp_admin = ERP(name='erp')
 site_proxy = erp_admin
 name_proxy = 'erp' #'admin'
+
+erp_admin.disable_action('delete_selected')
 """
 def get_app_list(self, request):
     '''
@@ -63,27 +65,51 @@ def get_app_list(self, request):
         return app_list
 """
 
+class TabularInline(admin.TabularInline): #AccessMixin, 
+    def __getattr__(self, attr):
+        if '__' in attr:
+            return get_related_field(attr)
+        return self.__getattribute__(attr)
+
+
 def order_link(obj): 
-    url = reverse(name_proxy +":erp_order_change", args=[obj.id]) 
-    link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+    link = '-'
+    if obj and hasattr(obj, 'id'):
+        url = reverse(f'{name_proxy}:erp_order_change', args=[obj.id]) 
+        link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
     return mark_safe(link)
 order_link.short_description = 'Order'
 
-def company_link(obj): 
-    url = reverse(name_proxy +":erp_company_change", args=[obj.id]) 
-    link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
-    return mark_safe(link)
-company_link.short_description = 'company'
-
 def product_link(obj, style = "font-weight:bold"): 
     #style = "font-weight:bold;text-decoration:line-through"
-    url = reverse(name_proxy +":erp_product_change", args=[obj.id]) 
+    url = reverse(f'{name_proxy}:erp_product_change', args=[obj.id]) 
     link = format_html('<a style={} href="{}">{} </a>', style, url, obj)
     return mark_safe(link)
 product_link.short_description = 'Product'      
 
-def container_link(obj): 
-    url = reverse(name_proxy +":erp_container_change", args=[obj.id]) 
-    link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+def batch_link(obj): 
+    link = '-'
+    if obj and hasattr(obj, 'id'): # order list view gave error nontype has no attribute id
+        # new
+        url = reverse(f'{name_proxy}:{obj._meta.app_label}_{obj._meta.model_name}_change', args=[obj.id]) 
+        #url = reverse(f'{name_proxy}:erp_batch_change', args=[obj.id]) 
+        link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
+    return link
+batch_link.short_description = 'batch'
+
+
+def company_link(obj): 
+    link = '-'
+    if obj and hasattr(obj, 'id'):
+        url = reverse(f'{name_proxy}:erp_company_change', args=[obj.id]) 
+        link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj)
     return mark_safe(link)
-container_link.short_description = 'Container'
+company_link.short_description = 'company'
+
+def opsorder_link(obj): 
+    link = '-'
+    if obj and hasattr(obj, 'id'):
+        url = reverse(name_proxy +":erp_orderall_change", args=[obj.order.id]) #_orderops_
+        link = format_html('<a style="font-weight:bold" href="{}">{} </a>', url, obj.order)
+    return mark_safe(link)
+opsorder_link.short_description = 'OpsOrder'

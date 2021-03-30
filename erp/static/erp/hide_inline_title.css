@@ -22,4 +22,22 @@ width: 210px;
 [class^="field-tally"]  .vTextField{
     width: 200px;
 }
-/**/
+
+[class^="field-process"] {
+    /*ops order view order note column width*/
+    width: 300px;
+}
+input[name="title"] {
+    /* product title */
+    width: 600px;
+  }
+  input[name="note"] {
+    /* product notes */
+    width: 600px;
+  }
+
+/*
+.vTextField, .vUUIDField {
+    width: 50em;
+}
+*/

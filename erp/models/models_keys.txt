@@ -1,5 +1,7 @@
 # aid to thinking about query optimisations
 
+# out of date
+
 Address, 
 	fk company
 Contacts
@@ -23,3 +25,13 @@ OrderItem
 	fk Product
 Container
 missing
+
+condition = Q(f'product__type__{process}')
+then = F('quantity')-F(f'{process}_total')
+default=Value('-')
+output_field=models.CharField()) 
+case = Case(
+	When(condition, then=then),
+	default=default, 
+	output_field=output_field)
+ **{f'{process}_remain2': case for process in work_field_names}

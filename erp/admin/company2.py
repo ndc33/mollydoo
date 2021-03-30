@@ -28,7 +28,7 @@ from .workstemplate import admin2
 
 
 
-class OrderNoteInline(admin.TabularInline):
+class OrderNoteInline2(admin.TabularInline):
     model = OrderNote
     extra = 0
     formfield_overrides = text_box(1, 30)
@@ -42,7 +42,7 @@ class OrderNoteInline(admin.TabularInline):
          return False
 
 
-class ContactInline(admin.TabularInline):
+class ContactInline2(admin.TabularInline):
 #class ContactInline(admin.StackedInline):
     model = Contact
     extra = 0
@@ -56,7 +56,7 @@ class ContactInline(admin.TabularInline):
          return False
 
 
-class AddressInline(admin.StackedInline):
+class AddressInline2(admin.StackedInline):
     model = Address
     extra = 0
     def has_change_permission(self, request, obj=None):
@@ -66,7 +66,7 @@ class AddressInline(admin.StackedInline):
     def has_add_permission(self, request, obj=None):
          return False
     
-class OrderInline(admin.TabularInline):
+class OrderInline2(admin.TabularInline):
     model = Order
     extra = 0
     fields = ['order_link','value_net','company','OD','LD_markup','CD_markup','batch','status'] 
@@ -83,7 +83,7 @@ class OrderInline(admin.TabularInline):
         return order_link(obj)
 
 
-class AddressAdmin(ImportExportMixin, admin2):
+class AddressAdmin2(ImportExportMixin, admin2):
     #resource_class = AddressResource # keep
     list_display = ('name', 'company', 'type')
     search_fields = ['company__name','postcode','type','name', 'address']
@@ -96,10 +96,10 @@ class AddressAdmin(ImportExportMixin, admin2):
             #return delta.changed_fields # origional stackoverflow
             return [change.field for change in delta.changes]
         return None
-erp_admin.register(Address, AddressAdmin)#, site=site_proxy)  # standard method -> @property will be fully fixed in Django 3.2
+erp_admin.register(Address, AddressAdmin2)#, site=site_proxy)  # standard method -> @property will be fully fixed in Django 3.2
 
 
-@admin.register(Contact, site=site_proxy)
+@admin.register(Contact2, site=site_proxy)
 class ContactAdmin(admin2):
     list_display = ('name','company','role','email','office_number','mobile_number')
     remove_pk_controls = ['company']
@@ -109,7 +109,7 @@ class ContactAdmin(admin2):
 
 
 
-class ProductInline(admin.TabularInline):
+class ProductInline2(admin.TabularInline):
     model = Product
     extra = 0
     #process_notes = [wfn + '_note' for wfn in work_field_names]

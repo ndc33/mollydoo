@@ -1,193 +1,140 @@
 from django.db import models
-from django.utils.html import format_html
+from django.utils.html import format_html, escape
+from django.utils.safestring import mark_safe
+from django.db.models import Q, F, Count, Value, When, Case, Sum, ExpressionWrapper, DecimalField 
+from django.db.models.functions import Greatest, Least
 import datetime
-
+from decimal import Decimal
 from .company import Company
 #from .batches import Container
 from ..utils import ss, work_field_names, decorate, sumtally, get_roll_groups
 
+import operator
+from functools import reduce
 
-class OrderItemTotalSummaryMethods():
-    ''' get the totals from sumtally for each process for the given orderitem, method = <process>_total'''
-    # '-' to not show misleading zero for a product for which process does not exist
-    # '-' logic is now twisted with downstream functions,  maybe redesign
-    @property
-    @decorate(short_description = "Printed") # changed to distinguish in ops views
-    def print_tallytotal(self):
-        if self.product.type.print:
-            # this is unique to print (to track locations of print)
-            roll_data = get_roll_groups(self.tally_print)
-            return roll_data[0] # todo find a way to display roll totals 
-        return '-'
+
+""" # explore idea for ui defined processes
+class process(models.Model):
+    title = models.CharField(max_length=30, blank=True, default='')
+    item = models.ForeignKey('OrderItem', related_name='process', on_delete=models.PROTECT)
+    tally =   models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    total =   models.PositiveSmallIntegerField(default=0, verbose_name='printed')
+    def remain(self):
+        return self.item quantity - self.total
+    def progress(self):
+        return self.total/self.item quantity
+    
+"""
+
+
+
+
+class OrderItemRelatedModelMethods():
     @property
     def print_locations(self):
         # only used by processes downstream of print
         roll_data = get_roll_groups(self.tally_print)
         return roll_data[1] 
     @property
-    @decorate(short_description = "Cut")
-    def cut_tallytotal(self):
-        if self.product.type.cut:
-            return sumtally(self.tally_cut)
-        return '-'
-    @property
-    @decorate(short_description = "Weld")
-    def weld_tallytotal(self):
-        if self.product.type.weld:
-            return sumtally(self.tally_weld)
-        return '-'
-    @property
-    @decorate(short_description = "Stuff")
-    def stuff_tallytotal(self):
-        if self.product.type.stuff:
-            return sumtally(self.tally_stuff)
-        return '-'
-    @property
-    @decorate(short_description = "Pack")
-    def pack_tallytotal(self):
-        if self.product.type.pack:
-            return sumtally(self.tally_pack)
-        return '-'
-    @property
-    @decorate(short_description = "progress")
-    def item_progress(self): 
-        # needs more work
-        total = 0
-        count = 0
-        for wf in self.work_fields:
-            subtotal = getattr(self, wf+'_total')
-            #if isinstance(subtotal, int):
-            count+=1
-            total += subtotal 
-        if count:
-            progress = total*100/count/self.quantity # %
-        return round(progress,0) if count else '-'
-
-    # @property
-    # def product_notes(self):
-    #     return self.product.notes
-
-
-class OrderItemRemaingMethods():
-    @property
-    @decorate(short_description = "print")
-    def print_remain(self):
-        if self.product.type.print:
-            return self.quantity - self.print_total
-        return '-'
-    @property
-    @decorate(short_description = "cut")
-    def cut_remain(self):
-        if self.product.type.cut:
-            return self.quantity - self.cut_total
-        return '-'
-    @property
-    @decorate(short_description = "weld")
-    def weld_remain(self):
-        if self.product.type.weld:
-            return self.quantity - self.weld_total
-        return '-'
-    @property
-    @decorate(short_description = "stuff")
-    def stuff_remain(self):
-        if self.product.type.stuff:
-            return self.quantity - self.stuff_total
-        return '-'
-    @property
-    @decorate(short_description = "pack")
-    def pack_remain(self):
-        if self.product.type.pack:
-            return self.quantity - self.pack_total
-        return '-'
-    
-
-class OrderItemRelatedModelMethods():
-    ''' info from other models required for views,
-    the methods below which call other models 'calculated-properties' will inherit ordering and try/except protection'''
-    @property
-    def company(self):
-        return self.order.company
-    @property
-    def order_notes(self):
-        return '%s' % (self.order.notes)
-    @property
     def products_allowed(self):
         return self.order.products # self.order.company.own_products 
     @property
     def work_fields(self):
         return self.product.type.workfields_defined
-    @ property
-    def container(self):
-        return self.order.container
-    @property
-    def DD(self):
-        return self.order.container.dispatch_date
-    @property
-    def category(self):
-        # not used
-        #import pdb; pdb.set_trace() 
-        return self.product.type.category.title
-    @property
-    def type(self):
-        return self.product.type.title
     @property
     def overprints(self):
         '''only called by works-print-view'''
         return self.product.overprints or ''
 
+# -----
+
+# class OrderItemQuerySet(models.QuerySet):
+#     def filtered_orders(self):
+#         return  self.filter(product__id = self.id).values_list('quantity', flat = True)
+#     # def in_session(self):
+#     #     now = timezone.now()
+#     #     return self.filter(start__lte=now, end__gte=now)
+
 
 class OrderItemManager(models.Manager):
-    ''' optimize queries with prfetches and annotations'''
+    #use_for_related_fields = True
+    ''' optimize queries with prefetches and annotations'''
     # modest improvement
     def get_queryset(self):
-        qs =  super().get_queryset()
-        #qs = qs.annotate(_ppp=models.Value(1, output_field=models.IntegerField())) # testing
-        #qs = qs.prefetch_related(models.Prefetch('order__DD'))
-        #qs = qs.select_related('order__batchorders__batch')
-        qs = qs.select_related('product__type', 'order', 'order__container','order__company')
-        #qs = qs.prefetch_related(models.Prefetch(''))
-        #no use: 'product__type__category'
+        default = Value('-')
+        output_field=models.CharField()  
+ #**{f'{process}_remain2': case for process in work_field_names}
+        process_total_exp = reduce(operator.add, (Least(F(f'{process}_total'), F('quantity')) for process in work_field_names))
+        process_count_exp = reduce(operator.add, (F(f'product__type__{process}') for process in work_field_names))
+        qs = super().get_queryset().prefetch_related(
+            #
+            ).select_related(
+            'product__type', 
+            'product',
+            'product__type__category', # very good
+            'order', 
+            'order__batch', # speeds up item listing
+            'order__company'  # speeds up item listing
+            ).annotate(
+                process_total = process_total_exp
+            ).annotate(
+                process_count = ExpressionWrapper(process_count_exp, output_field=models.IntegerField())
+            ).annotate(
+                **{f'{process}_remain2': Case(
+                When(Q(**{f'product__type__{process}':True}), then=Greatest(F('quantity')-F(f'{process}_total'),Value(0))),
+                default=default, 
+                output_field=output_field) for process in work_field_names}
+              #old  **{f'{process}_remain2':ExpressionWrapper((F('quantity')-F(f'{process}_total'))*F(f'product__type__{process}'),output_field=models.IntegerField())
+              #      for process in work_field_names}
+            ).annotate(
+                progress2=ExpressionWrapper(F('process_total') * Decimal('100.0')/F('process_count')/F('quantity'), 
+                    output_field=models.DecimalField(0))# FloatField())
+            ).annotate(
+                #cannot see in the order annotation, but can see on general queries
+                #category = ExpressionWrapper(F('product__type__category__title'), output_field=models.CharField())
+            )
+        html = format_html('<span style="color: #{};">{}</span>', '008000', 'ggg item green')
+        qs = qs.annotate(ggg = models.Value(html, output_field=models.TextField())) # testing
         return qs
 
 
-class OrderItem(models.Model, 
+
+class OrderItem( 
     OrderItemRelatedModelMethods, 
-    OrderItemTotalSummaryMethods, 
-    OrderItemRemaingMethods):
+    #OrderItemTotalSummaryMethods, 
+    #OrderItemRemaingMethods,
+    models.Model
+    ):
     #
     objects = OrderItemManager()
-    order = models.ForeignKey('Order', related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey('Product', related_name='items', on_delete=models.PROTECT)
-    quantity = models.PositiveSmallIntegerField(default=1)
+    order =     models.ForeignKey('Order', related_name='items', on_delete=models.CASCADE)
+    product =   models.ForeignKey('Product', related_name='items', on_delete=models.PROTECT)
+    quantity =  models.PositiveSmallIntegerField(default=1)
     # x_ means copied over on creation
-    xprice = models.DecimalField(max_digits=8, decimal_places=2, blank=True)
-    xnotes = models.TextField(blank=True, default='')
-    xprint_notes = models.TextField(blank=True, default='', help_text='xPrint Notes')
-    xcut_notes = models.TextField(blank=True, default='')
-    xpack_notes = models.TextField(blank=True, default='')
+    xprice =        models.DecimalField(max_digits=8, decimal_places=2, blank=True)
     # text field to hold the process tallies e.g. '3,7,23' parsed/summed into to <process>_total methods above
-    tally_print = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
-    tally_cut = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
-    tally_weld = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
-    tally_stuff = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
-    tally_pack = models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_print =   models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_cut =     models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_weld =    models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_stuff =   models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_pack =   models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_pcut =    models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+    tally_glue =    models.CharField(max_length=120, blank=True, default='', verbose_name='tally')
+
     #
-    print_total = models.PositiveSmallIntegerField(default=0, verbose_name='printed')#blank=True, null=True)
-    cut_total = models.PositiveSmallIntegerField(default=0, verbose_name='cut')#blank=True, null=True)
-    weld_total = models.PositiveSmallIntegerField(default=0, verbose_name='welded')#blank=True, null=True)
-    stuff_total = models.PositiveSmallIntegerField(default=0, verbose_name='stuffed')#blank=True, null=True)
-    pack_total = models.PositiveSmallIntegerField(default=0, verbose_name='packed')#blank=True, null=True)
-    # TODO need to remove and make this a writable form field?
-    item_complete = models.BooleanField(default=False) # messy
+    print_total =   models.PositiveSmallIntegerField(default=0, verbose_name='printed')#blank=True, null=True)
+    cut_total =     models.PositiveSmallIntegerField(default=0, verbose_name='cut')#blank=True, null=True)
+    weld_total =    models.PositiveSmallIntegerField(default=0, verbose_name='welded')#blank=True, null=True)
+    stuff_total =   models.PositiveSmallIntegerField(default=0, verbose_name='stuffed')#blank=True, null=True)
+    pack_total =    models.PositiveSmallIntegerField(default=0, verbose_name='packed')#blank=True, null=True)
+    pcut_total =    models.PositiveSmallIntegerField(default=0, verbose_name='pvc_cut')#blank=True, null=True)
+    glue_total =    models.PositiveSmallIntegerField(default=0, verbose_name='glued')#blank=True, null=True)
     #
     class Meta:
         constraints = [
         models.UniqueConstraint(fields=['order', 'product'], name='unique_order_item')
         ]
-   
-    def ppp(self): # test of qs annotations
-        #import pdb; pdb.set_trace() 
-        return self._ppp
+        #base_manager_name = 'objects'#'OrderItemManager'
     def __str__(self):
         if self.id:
             return '%s' % self.id
@@ -198,17 +145,34 @@ class OrderItem(models.Model,
     def quantity_html(self):
         return format_html('<b>{}</b>', self.quantity)
     def save(self, *args, **kwargs):
+        #import pdb; pdb.set_trace() 
         if self._state.adding is True:  #if not self.id: 
             # pre form-filling wont work if we do not have FK already saved
             # this is safe from cross-user-saving since only triggered on creation 
-            try:
-                self.xprice = self.product.price
-                self.xnotes = self.product.notes
-            except:
-                pass
-        else:
-            pass
+           # try:
+            self.xprice = self.product.price
+            #except:
+            #    pass
         super().save(*args, **kwargs)
+    @property # 20/03
+    def progress(self):
+        # <small>
+        return format_html('<span style="color: #{};">{}</span>', '787878', '{0:.0f}%'.format(self.progress2)) #self.item_progress
+    def all_notes(self):
+        vv = []
+        for note in self.product.productnotes.all():
+            vv.append(f'{note.process}: {note.note}')  # inline concatonated text
+        return ' | '.join(vv) or '-'
+    # testing only
+    # def _ppp(self): # test of qs annotations
+    #     return self.ppp
+    # def myfunc2(self, arg):
+    #     return arg
+    
+    
+    
+   
+    
 
 
 # class OrderQuerySet(models.QuerySet):
@@ -229,39 +193,3 @@ class OrderItem(models.Model,
 # def clean(self): # this works in model!
     #     self.print_total += 1
 
-
-# moved to proxies 
-        # ???
-        # self.xprint_notes = self.product.print_notes
-        # self.xcut_notes = self.product.cut_notes
-        # self.xpack_notes = self.product.pack_notes
-
-# def test_item_complete(self): # expolration/in progress
-    #     cumm = True
-    #     for wf in work_field_names:
-    #         cumm &= getattr(self, 'complete_'+wf)
-    #     if cumm:
-    #         self.item_complete = True
-    # def tally_complete(self, name): # need to reimpliment on pure form fields
-    #     ''' the 'complete' checkbox will be set true if tally >= quantity ; alternativly 
-    #         the worker can set the checkbox and this will add missing number to the tally with ',,' marker'''
-    #     try:
-    #         qty = self.quantity
-    #         diff =  qty - getattr(self, name+'_total')
-    #         if (diff > 0) and getattr(self, 'complete_'+name):
-    #             setattr(self, 'tally_'+name, getattr(self, 'tally_'+name) + ',,' + str(diff))
-    #         setattr(self, 'complete_'+name, True if (getattr(self, name+'_total') >= qty) else False)
-    #         # if getattr(self, 'complete_'+name):
-    #         #     self.test_item_complete()
-    #     except:
-    #         pass
-    # def set_item_complete(self):
-    #     for wf in work_field_names:
-    #         tally_complete        
-
-     # flag to show commpleted processes for the orderitem 
-    #complete_print = models.BooleanField(default=False, verbose_name='complete')
-    #complete_cut = models.BooleanField(default=False, verbose_name='complete')
-    #complete_weld = models.BooleanField(default=False, verbose_name='complete')
-    #complete_stuff = models.BooleanField(default=False, verbose_name='complete')
-    #complete_pack = models.BooleanField(default=False, verbose_name='complete')

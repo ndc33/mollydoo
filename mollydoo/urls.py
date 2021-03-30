@@ -17,13 +17,13 @@ from django.contrib import admin
 from erp.admin import erp_admin # broken
 from django.urls import path, include#, url
 import debug_toolbar
-from .settings import use_grappelli
+from .settings import use_grappelli, DEBUG
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('erp/', erp_admin.urls),
     #path('chaining/', include('smart_selects.urls')),
-    path('__debug__/', include(debug_toolbar.urls)),
+   # path('__debug__/', include(debug_toolbar.urls)),
     #url(r'^chaining/', include('smart_selects.urls')),
     #path(r'_nested_admin/', include('nested_admin.urls')),
     #url(r'^_nested_admin/', include('nested_admin.urls')),
@@ -31,4 +31,5 @@ urlpatterns = [
 if use_grappelli:
     urlpatterns.insert(0, path('grappelli/', include('grappelli.urls'))) # grappelli URLS grp
 
-
+if DEBUG:
+    urlpatterns.append(path('__debug__/', include(debug_toolbar.urls)))

@@ -1,16 +1,73 @@
 
 # utils origionally used when running into circular references for the first time. May rework 
+#from django.db import models
 import regex as rex
 import datetime
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 #from .models import ProductCategory
 
 ss = "&nbsp"
 
-work_field_names = ['print','cut','weld','stuff','pack']
-work_field_names_plural = {'print':'printed','cut':'cut','weld':'welded','stuff':'stuffed','pack':'packed'}
-#ProductCategories = ['CM','ARM','XPVC','M','SPRUNG','OTHER'] 
-#ProductCategories = ['PVC Weld','PVC Sewn','PVC Print','M','Sprung','OTHER'] 
+work_field_names = ['print','pcut','weld','cut','glue','stuff','pack']
+#work_field_names_plural = {'print':'printed','cut':'cut','weld':'welded','stuff':'stuffed','pack':'packed'}
 # alternative Query for above ProductType._meta.get_field('category').choices
+
+
+def create_model(model, name, kwargsextra={}):
+    ''' e.g. vv = create_model(name='dynamic1', model=TestDynamic, process = 'print')'''
+    class Meta:
+        proxy = True
+        #app_label = 'erp'
+        app_label = model._meta.app_label
+        verbose_name_plural = kwargsextra['verbose_name_plural']
+        # model._meta.label_lower
+    attrs = {'__module__': '', 'Meta': Meta,**kwargsextra}
+    newmodel = type(name, (model,), attrs)
+    #admin.site.register(newmodel, modeladmin)
+    return newmodel #modeladmin
+
+
+def get_related_field(name, admin_order_field=None, short_description=None):
+    '''dynamic access to related model attributes, or query object annotations
+        from admin list_display strings etc
+        add <name>__html to get html markup contained in the annotation'''
+    #@property
+    html = None
+    farg = None
+    column_title = None
+    title =False
+    def _html(value): # not used
+        # obj.strip(')(').split(',') 
+        html = mark_safe(value)
+        #html = format_html('<span style="color: #{};">{}</span>', '008000', value)
+        return html
+    related_names = [x for x in name.split('__') if x]
+    #rcopy = 
+    if related_names[-1] == 'html':
+        html = related_names.pop() 
+    if related_names[-1].startswith('('):
+        farg = related_names.pop()[1:-1].split(',')
+        column_title = farg.pop()
+    def dynamic_attribute(obj):
+        for related_name in related_names:
+            #import pdb; pdb.set_trace()
+            obj = getattr(obj, related_name) #()
+        if farg:
+            if farg==['']:
+                return mark_safe(obj())
+            return mark_safe(obj(*farg))
+        return _html(obj) if html else mark_safe(obj) # with mark_safe on all no longer require html function
+    if name == '':
+        import pdb; pdb.set_trace()
+    # fixme admin_order_field broken
+    #if not farg == ['']:
+    #    print(name)
+        #import pdb; pdb.set_trace()
+    title = '__'.join(related_names)
+    dynamic_attribute.admin_order_field = title or name #admin_order_field or '__'.join(related_names) #name
+    dynamic_attribute.short_description = short_description or column_title or related_names[-1].title().replace('_', ' ')
+    return dynamic_attribute
 
 
 def decorate(**kwargs):
@@ -40,18 +97,21 @@ regex_error = rex.compile(r"""          # needs completly rewriting, will do for
                    |[\d\)\()][rR]       # r logic = not 'xr' where x is number, ')' or '(' i.e. missing ','
                    |\)[rR\d\(] # close bracket logic = not ')x' where x is a number or 'r'
                    """, rex.VERBOSE | rex.MULTILINE)
+
 def sumtally(s):
     try:
-        #import pdb; pdb.set_trace() 
         qq = regex_error.search(s)
         if qq:
-            return 'error in tally, see: ' + qq.group()
-        return _sumtally(s)
+            return 'error in tally, see: ' + qq.group() 
+        vv = _sumtally(s)
+        #import pdb; pdb.set_trace()
+        return vv
     except:
         return 'error in tally'
 
+
 def get_roll_groups(text):
-    """ accepts strings like folllowing for tracking prints to rolls '9  ,r67(8,9,8),r2(3),9,r67(4)' """ 
+    """ accepts strings like following for tracking prints to rolls '9  ,r67(8,9,8),r2(3),9,r67(4)' """ 
     try:
         #import pdb; pdb.set_trace() 
         qq = regex_error.search(text)
@@ -77,13 +137,81 @@ def get_roll_groups(text):
     return (int(total), roll_sum)
 
 
-def setwidget(widget):
-    widget.can_add_related = False
-    widget.can_change_related = False
-    widget.can_delete_related = False
+def setwidget(widget, attr = None):
+    if attr:
+        if 'change' in attr:
+            widget.can_change_related = False
+        if 'add' in attr:
+            widget.can_add_related = False
+        if 'delete' in attr:
+            widget.can_delete_related = False
+        pass
+    else:
+        widget.can_add_related = False
+        widget.can_change_related = False
+        widget.can_delete_related = False
+
 
 def shortdate(obj):
     if isinstance(obj, datetime.date):
         return obj.strftime("%a %d %b")
     return obj
 
+
+
+
+"""
+class TestDynamic(models.Model):
+    test = models.BooleanField(default=False) 
+    class Meta:
+        #app_label = 'erp'
+        pass
+    def _test(self):
+        return self.process
+
+
+class AccessMixin():
+    def get_related_field(name, admin_order_field=None, short_description=None):
+        '''dynamic access to related model attributes, or query object annotations
+            from admin list_display strings etc
+            add <name>__html to get html markup contained in the annotation'''
+        #@property
+        html = None
+        def _html(value):
+            # obj.strip(')(').split(',') 
+            html = mark_safe(value)
+            #html = format_html('<span style="color: #{};">{}</span>', '008000', value)
+            return html
+        related_names = [x for x in name.split('__') if x]
+        if related_names[-1] == 'html':
+            html = related_names.pop() 
+        if related_names[-1].startswith('@'):
+            farg = related_names.pop()[1:]
+        def dynamic_attribute(obj):
+            for related_name in related_names:
+                if 'ppp' in related_names:
+                #import pdb; pdb.set_trace()
+                    pass
+                obj = getattr(obj, related_name) #()
+            if farg:
+                return obj(farg)
+            return _html(obj) if html else mark_safe(obj) # with mark_safe on all no longer require html function
+        dynamic_attribute.admin_order_field = admin_order_field or '__'.join(related_names) #name
+        dynamic_attribute.short_description = short_description or related_names[-1].title().replace('_', ' ')
+        return dynamic_attribute
+    def __getattr__(self, attr):
+        if '__' in attr:
+            #import pdb; pdb.set_trace()
+            return self.get_related_field(attr)
+        # not dynamic lookup, default behaviour
+        return self.__getattribute__(attr)
+"""
+
+'''
+class RelatedFieldAdmin(admin.ModelAdmin):
+    def __getattr__(self, attr):
+        if '__' in attr:
+            return get_related_field(attr)
+        # not dynamic lookup, default behaviour
+    return self.__getattribute__(attr)
+'''

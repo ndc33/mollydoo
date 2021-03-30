@@ -4,7 +4,7 @@ page headings now have extra info and markup -> need to modify the templates to 
 
 [interface]
 template for creating sales orders /quotes from the order 
-messaging
+messaging ( along the lines of pinax notes or home made)
 delivery process view
 maps (route planning) view
 fixed nabar with save button
@@ -15,6 +15,9 @@ also need keep scroll position (default is return to top)?
 
 
 [DB/models]
+multi select (e.g. m2m widget) for choices of note processes
+race condition issue with tally
+integers for choices 
 need some way of marking certain records as protected
 softdelete (no external packages)
 model history (maybe reversion)
@@ -41,7 +44,9 @@ add group/role level permisions
 
 [deployment]
 postgres
+ngix etc setup
 multiple-workers
+continous connection
 workstations or tablets
 
 

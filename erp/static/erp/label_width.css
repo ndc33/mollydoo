@@ -120,3 +120,23 @@ h1 {
 tr.totals {
     background: #CAFFED;
 }
+
+
+.column-batch{
+    /* sets the list view batch FK too the far right */
+    width: 300px;
+}
+
+.change-list .related-widget-wrapper-link {
+    /* kills the icons for FK on list view, note the space after body class*/
+    display: none;
+}
+
+/*
+.inline-group h2:nth-child(1) {
+    background: #73ad31;
+}
+.inline-group h2:nth-child(2) {
+    background: #8f81cc;
+}
+ .options > div:not(:first-child) .module h2, .module caption, .inline-group h2 */

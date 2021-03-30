@@ -7,10 +7,12 @@ from ..utils import ss, decorate, shortdate
 from .order import Order 
 
 
-class Container(models.Model):
+class Batch(models.Model):
     title = models.CharField(max_length=255, blank=True, null=True)
     dispatch_date = models.DateField(auto_now_add=False, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
+    class Meta:
+        verbose_name_plural = 'Batches'
     @property
     def orders_list(self):
         qq = self.orders.values_list(flat=True)

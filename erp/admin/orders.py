@@ -2,8 +2,8 @@ from django import forms
 from django.db import models
 from django.db.models import Q, F, Count, Avg
 from django.contrib import admin
-from django.urls import reverse
-from django.utils.html import format_html
+#from django.urls import reverse
+#from django.utils.html import format_html
 #from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 #from django.contrib.admin.options import change_view
@@ -12,14 +12,15 @@ from django.contrib.auth.models import User, Group
 #from simple_history.admin import SimpleHistoryAdmin
 
 from ..models import Order, OrderItem
-from ..models import ProductType,  Product
+from ..models import ProductType, Product, ProductDisplayCategory
+from ..models import OrderNoteItem
 
 from .setup import erp_admin, site_proxy, name_proxy
 from .setup import text_box
-from .setup import product_link, company_link, container_link
-from .workstemplate import TemplateFilter, admin2
+from .setup import product_link, company_link, batch_link
+from .workstemplate import admin2 #TemplateFilter, 
 
-from ..utils import ss, setwidget, work_field_names
+from ..utils import ss, setwidget  #, work_field_names
 
 # TODO 
 # html view for printing quotes, sales-orders and delivery-notes
@@ -35,6 +36,19 @@ from ..utils import ss, setwidget, work_field_names
 #   pdf or image files which serve as specification/construction info  
 
 
+class OrderNoteItemInline(admin.TabularInline):
+    model = OrderNoteItem
+    extra = 0
+    formfield_overrides = text_box(1, 80)
+    fields = ('process','note','highlight')
+    #readonly_fields = ['process', 'note']
+    #def process(self, obj):
+    #    return obj.ordernote.process
+    #def note(self, obj):
+    #    return obj.ordernote.note
+    #def has_add_permission(self, request, obj=None):
+    #     return False
+"""
 class OrderItemAdminView(OrderItem):
     class Meta:
         proxy = True
@@ -42,16 +56,16 @@ class OrderItemAdminView(OrderItem):
     # def __str__(self):
     #     return '%s of %s' % (self.quantity, self.product)
     def save(self, *args, **kwargs):
+        
         super().save(*args, **kwargs)
-
+"""
 
 class OrderItemInline(admin.TabularInline):
 #class OrderItemInline(admin.StackedInline):
-    model = OrderItemAdminView
+    model = OrderItem#AdminView
     extra = 0
     formfield_overrides = text_box(1, 30)
-    fields = ('product','xnotes','xprice','quantity')
-    #fields = (('product', 'xprice','quantity'),('xprint_notes','xcut_notes','xpack_notes'))
+    fields = ('product','xprice','quantity') #,'qnotes'
     class Media:
         css = {'all': ('erp/hide_inline_title.css', )}
     myobject_id = None
@@ -83,10 +97,11 @@ class OrderItemInline(admin.TabularInline):
     #    title = self.cleaned_data.get('product')
     #    return super().save(commit=commit)
 
+
 class OrderItemInlineFixedKey(OrderItemInline):
-    pass
-    fields = ('product_link','xnotes','xprice','quantity') # added
-    readonly_fields = ('product_link',)
+    process_notes = ['all_notes'] #[wfn + '_note' for wfn in work_field_names] 20/03
+    fields = ('product_link', *process_notes, 'xprice','quantity') # qnotes
+    readonly_fields = ('product_link', *process_notes)
     def has_add_permission(self, request, obj=None):
          return False
     def product_link(self, obj): 
@@ -96,11 +111,13 @@ class OrderItemInlineFixedKey(OrderItemInline):
 class OrderItemInlineFreeKey(OrderItemInline):
     pass
     verbose_name_plural = 'Add New Order Items'
+    fields = ['product', 'quantity']
+    def has_delete_permission(self, request, obj=None):
+         return False
     def get_queryset(self, request): 
         qs = super().get_queryset(request) #works
         #self.verbose_name_plural = self.vnp
           #import pdb; pdb.set_trace()
-        #qs=qs.none()
         return qs.none()#qs#qs.filter(product__type__code=self.ttt) #'CM'
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -132,9 +149,9 @@ class OrderItemInlineFreeKey(OrderItemInline):
 class OrderAdmin(admin2):
     #form = OrderAdminForm # example
     save_on_top = True
-    remove_pk_controls = ['company','container']
-    autocomplete_fields = ['company','container']
-    search_fields = ['company__name','id','container__title',
+    remove_pk_controls = ['company','batch']
+    autocomplete_fields = ['company','batch']
+    search_fields = ['company__name','id','batch__title',
             'items__product__title','items__product__type__title'] #'items__product__code'
     # change_list_template = 'change_list_totals.html'
 
@@ -149,48 +166,59 @@ class OrderAdmin(admin2):
     #     else:
     #         queryset |= self.model.objects.filter(age=search_term_as_int)
     #     return queryset, use_distinct
+    # 26/03 
     modify_labels = {'CD_C':'', 'LD_S':''}#, 'id': 'Order ID'}
     listviewtitle = 'Orders'
     formfield_overrides = text_box(3, 70)
-    suppress_form_controls = {
-        'show_save_and_add_another': False,
-        'show_delete': False,
-        'show_save': False
-    }
-    list_display = ['id','company_link','value_net','OD','LD_markup','CD_markup','container_link','status'] 
+   
+    list_display = ['id','company_link','value_net','OD','LD_markup','CD_markup','batch_link','status']#,
     #list_totals = [('items__xprice', Avg)]
-    totalsum_list = ['value_net']
+    totalsum_list = ['value_net'] 
     unit_of_measure = '&pound;' # todo need prefix
-    fields = [
-        ('id', 'delivered', 'invoiced', 'paid'),
-        'company',
-        ('OD','LD','LD_S'),
-        ('CD', 'CD_C','container'),  
-        'notes','xorder_notes','xmanufacture_notes','xdelivery_notes',
-    ]
+    
+    
     #search_fields = ['foreign_key__related_fieldname'] # example - note the db field follow!
-    inlines = [OrderItemInlineFixedKey, OrderItemInlineFreeKey]#[OrderItemInline]
+    def get_inlines(self, request, obj=None):
+        if obj: 
+            return [OrderNoteItemInline, OrderItemInlineFixedKey, OrderItemInlineFreeKey]#[OrderItemInline]
+        # no inlines on obj creation. For info, see also add_view() and change_view()   
+        return []
+       
     class Media:
         #extend = False # keep for info, default True
         #css = {'screen': ('erp/hide_today.css', 'erp/label_width.css')} # not working?
-        css = {'screen': ('erp/admin_order.css',)}
+        css = {'screen': ('erp/admin_order.css','erp/label_width.css')}
         pass #js = ('erp/q.js',)
     #actions = [admin_order_shipped]
+    std_fields = [
+            ('id', 'delivered', 'invoiced', 'paid'),
+            'company',
+            ('OD','LD','LD_S'),
+            ('CD', 'CD_C','batch')]
+    #fields = std_fields
+    def get_fields(self, request, obj=None):
+        if obj: # existing record
+            return self.std_fields
+        return ['company']
     def get_readonly_fields(self, request, obj=None):
-        default = ['id','DD','created_at','modified','status','xs1','LD_markup','CD_markup','container_link','company_link']#'id',
-        #import pdb; pdb.set_trace()
+        default = ['id','DD','created_at','modified','status','LD_markup','CD_markup','batch_link','company_link']
+        #'id',
         if obj: # existing record
             return default+['company']
         #self.autocomplete_fields = ['company'] # attempted hack
         return default # object creation
-    def container_link(self, obj): 
-        if obj:
-            return container_link(obj.container)
-    #container_link.short_description = 'Container'
+
+    def batch_link(self, obj): 
+        return batch_link(obj.batch)
+    batch_link.admin_order_field = 'batch'
     def company_link(self, obj): 
-        if obj:
-            return company_link(obj.company)
-    def value_net(self, obj):
-        return '£%s' % obj.value_net
+        return company_link(obj.company)
+    company_link.admin_order_field = 'company'
+    def get_queryset(self, request): 
+        import pdb; pdb.set_trace 
+        qs = super().get_queryset(request)
+        return qs
+   
+    
     
 

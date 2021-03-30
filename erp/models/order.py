@@ -1,14 +1,17 @@
 from django.db import models
 from django.utils.html import format_html
-from django.db.models import Q, F, Count, Sum, DecimalField
+from django.db.models import Q, F, Count, Sum, ExpressionWrapper, DecimalField, IntegerField
+from django.forms.models import model_to_dict
 import datetime
 import operator
+from decimal import Decimal
 
 from .company import Company
-from .product import ProductType, ProductCategories
+from .product import ProductType, ProductDisplayCategory#ProductCategories
 #from .batch import Container
 from .orderitem import OrderItem
 from ..utils import ss, work_field_names, decorate, sumtally, get_roll_groups, shortdate
+from .specnotes import OrderNoteItem, OrderNoteAbstract
 
 #from simple_history.models import HistoricalRecords
 #from smart_selects.db_fields import ChainedForeignKey
@@ -16,36 +19,84 @@ from ..utils import ss, work_field_names, decorate, sumtally, get_roll_groups, s
 
 # https://django-model-utils.readthedocs.io/en/latest/managers.html
 #from model_utils.managers import InheritanceManager, QueryManager
-
 #
 
 class OrderTotalSummaryMethods():
     # '-' to not show misleading zero for a product for which process does not exist
     pass
    
+# class OrderQuerySet(models.QuerySet):
+#     def public_method(self):
+#         return
+#     def with_progress(self):
+#         return (
+#             self.annotate(qqq=models.Value('qqq annotation', output_field=models.CharField()))
+#         )
+
+class QRound(models.Func):
+    # not working DB type issue??
+    function = 'ROUND'
+    #arity = 2
+    template='%(function)s(%(expressions)s, 2)'
 
 class OrderManager(models.Manager):
     ''' optimize queries with prefetches and annotations, (reduces queries by 1 order of magnitude)'''
+    #use_for_related_fields = True
+    # def get_queryset(self):
+    #     return OrderQuerySet(self.model, using=self._db)
+    def progress3(self, category):
+        pass
     def get_queryset(self):
-        qs =  super().get_queryset()
-        #qs = qs.select_related('container')
-        #qs = qs.select_related('batch')
-        #all_product_types_defined = ProductType.objects.values_list('code', flat=True)
-        ###all_product_types_defined = ProductType.objects.values('code')
-        ###qs = qs.annotate(all_product_types_defined=all_product_types_defined)
-        #qs = qs.annotate(_ppp=models.Value('ppp annotation', output_field=models.CharField())) # testing
-        qs = qs.prefetch_related('items__product', 'items__product__type', 'items__product__type__category')#items__product__type
-        # 'item', 'item__product' makes no difference
+        from .product import ccc
+        #categories = ccc('{category}')
+        qs = super().get_queryset().prefetch_related(
+            'items', 
+            #'items__product', 
+            #'items__product__type', 
+            #'items__product__type__category',
+            #Prefetch('books', queryset=Book.objects.filter(price__range=(250, 300))))
+            #'items__product__productnotes'#, 'ordernoteitems'
+        ).select_related(
+            'company',
+            'batch',
+            #'items__product__type','items__product__type__category'
+        ).annotate(
+            ## items__product__type__category__title
+            #**{f'sum_{category}':Sum('items__quantity', filter=Q(items__product__type__category__title=category)) 
+            #    for category in categories}  
+        ).annotate(
+            # value_net2 works but issues with rounding and sum row
+            value_net2 = QRound(Sum(F('items__xprice')*F('items__quantity')), output_field=DecimalField(decimal_places=2))
+            #all_categories = 
+            #order_total_quantity = Sum('items__quantity') 
+        ).annotate(
+            #**{f'remain_{category}_{process}':Sum(f'items__{process}_remain2', 
+            # filter=Q(items__product__type__category__title=category))
+            #    for category in categories for process in work_field_names}
+        )
+        #import pdb; pdb.set_trace()
+        #qs = qs.annotate(qq2=models.Value('order qq2 annotation', output_field=models.CharField())) # testing
         return qs
 
+
+def copy_and_create_order_notes(instance):
+    company = Company.objects.get(id=instance.company_id)
+    company_ordernotes = company.ordernotes.all()
+    commonfields = OrderNoteAbstract._meta.fields
+    for note in company_ordernotes:
+        fields = model_to_dict(note, fields=[f.name for f in commonfields])
+        #import pdb; pdb.set_trace()
+        fields['order'] = instance
+        OrderNoteItem.objects.create(**fields)
+        #pp = OrderNoteItem(**fields)
+        #pp.save()
 
 
 class Order(models.Model, OrderTotalSummaryMethods):
     objects = OrderManager()
-    sentinal_text = "---press update to copy STD notes---"
     id = models.AutoField(primary_key=True, verbose_name="Order") # get verbose name on ID - not required
     company = models.ForeignKey('Company', related_name='orders', on_delete=models.PROTECT)
-    container = models.ForeignKey('Container', related_name='orders', default=1, null=True, blank = True, on_delete=models.SET_NULL)
+    batch = models.ForeignKey('Batch', related_name='orders', default=1, null=True, blank = True, on_delete=models.SET_NULL)
     #active = models.BooleanField(default=True)
     OD = models.DateField(auto_now_add=False, blank=True, null=True)#, verbose_name="Order Date")
     LD = models.DateField(auto_now_add=False, blank=True, null=True)#, verbose_name="Lead Date")
@@ -56,37 +107,32 @@ class Order(models.Model, OrderTotalSummaryMethods):
     delivered = models.BooleanField(default=False)
     invoiced = models.BooleanField(default=False)
     paid = models.BooleanField(default=False)
-    notes = models.TextField(blank=True, default='')
+    #notes = models.TextField(blank=True, default='')
     # x_ means copied over on creation
-    xorder_notes = models.TextField(blank=True, default=sentinal_text)
-    xmanufacture_notes = models.TextField(blank=True, default=sentinal_text)
-    xdelivery_notes = models.TextField(blank=True, default=sentinal_text)
     created_at = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     class Meta:
-        ordering = ('LD',)
+        #ordering = ('LD',)
+        #base_manager_name = 'objects'
+        pass
     def save(self, *args, **kwargs):
-        #try:
+        firsttime = False
         if self._state.adding is True:
+            firsttime = True
             #import pdb; pdb.set_trace()
-            company = Company.objects.get(id=self.company_id)
-            if self.xorder_notes == self.sentinal_text:
-                self.xorder_notes = company.order_notes
-            if self.xmanufacture_notes == self.sentinal_text:
-                self.xmanufacture_notes = company.manufacture_notes
-            if self.xdelivery_notes == self.sentinal_text:
-                self.xdelivery_notes = company.delivery_notes
-            #if not self.id: # what?
             self.OD = datetime.date.today()
-        #except:
-        #    pass
         super().save(*args, **kwargs)
+        if firsttime:
+            copy_and_create_order_notes(self)
+    @property        
+    def str_id(self): # added to try to get around int error on search
+        return '%s' % self.id      
     def __str__(self):
         return '%s %s' % (self.company.shortname, self.id)
     @property
-    @decorate(admin_order_field = 'container__dispatch_date')
+    @decorate(admin_order_field = 'batch__dispatch_date')
     def DD(self):
-        qq = getattr(self.container, 'dispatch_date', None) # access issue just wierd
+        qq = getattr(self.batch, 'dispatch_date', None) # access issue just wierd
         return shortdate(qq)
     @property
     #@decorate(admin_order_field='status') # is required to return query
@@ -94,7 +140,7 @@ class Order(models.Model, OrderTotalSummaryMethods):
         # just a crude mock-up for future functionality
         # note: need lots of data checking on inputs for incoherent combinations 
         status = 'Shelf' # means unassigned
-        if getattr(self.container, 'dispatch_date', None):
+        if getattr(self.batch, 'dispatch_date', None):
             status = 'Assigned'
         if self.delivered:
             status = 'delivered'
@@ -107,109 +153,83 @@ class Order(models.Model, OrderTotalSummaryMethods):
     def products_allowed(self):
         return self.company.own_products
     @property
-    @decorate(short_description = "LD")
+    @decorate(short_description = "LD", admin_order_field = 'LD')
     def LD_markup(self): # need to change format to differentiate this with undeline or such
         color = '8c8c8c' if not self.LD_S else '000000'
         return format_html('<span style="color: #{};">{}</span>', color, shortdate(self.LD))
     @property
-    @decorate(short_description = "CD")
+    @decorate(short_description = "CD", admin_order_field = 'CD')
     def CD_markup(self):
         color = '8c8c8c' if not self.CD_C else '000000'
         return format_html(
             '<span style="color: #{};">{}</span>', color, shortdate(self.CD))
-    def productcategory_quantity(self, product_category, withprogress=False):
-        '''basis for enumerated method generation (see below) such as CM_remain_weld 
-            or (with progress) ARM_progress_all'''
-        # core of this could be done directly on query (not worth effort)
-        total_quantity = total_progress = hasresult = 0
-        for item in self.items.all():
-            #import pdb; pdb.set_trace()
-            if product_category == item.product.type.category.title: #kk
-                qty = item.quantity
-                total_quantity += qty
-                total_progress += item.item_progress * qty
-                hasresult = True
-        if hasresult:
-            total_progress = total_progress/total_quantity if total_quantity else ''
-            if withprogress:
-                #return '%s of %s' % (total_quantiy, total_progress)
-                total_progress = '{0:.0f}%'.format(total_progress) #if total_progress else '0%'
-                color = '585858'
-                return format_html('{} <span style="color: #{};">&nbsp<sub>{}</sub></span>', total_quantity, color, total_progress)
-            return total_quantity
-        return '-'
-    def productcategoryprocess_remain(self, product_category, process, withtotals):
-        '''basis for enumerated method generation (see below) such as CM_total_all'''
+    @property
+    @decorate(admin_order_field = 'value_net2') 
+    def value_net(self):
+        value = self.value_net2
+        # value = OrderItem.objects.filter(order__id = self.id).aggregate(sum=Sum(
+        #     F('xprice')*F('quantity'), output_field=DecimalField())
+        #     )["sum"]
+        return round(value, 2) if value else 0 
+    def productcategoryprocess_remain(self, product_category, process, withtotals=False):
+        '''basis for dynamic calling (see below) such as CM_total_all'''
         remain_total = qty_total = 0
         hasresult = False
-        for item in self.items.all():
-            if product_category == item.product.type.category.title: #kk
-                remain_subtotal = getattr(item, process + '_remain')
+        # the moral is never try to filter a prefetch!
+        items = self.items.all()
+        #items = self.items.filter(product__type__category__title = product_category) #product__type__category__title = 
+        for item in items:
+            if product_category == item.product.type.category.title: # use with .all()
+                remain_subtotal = getattr(item, process + '_remain2') # _2 is the annotation
                 qty_subtotal = item.quantity
                 if isinstance(remain_subtotal, int):
-                    #print(product_category, process, subtotal)
                     remain_total += remain_subtotal
                     qty_total += qty_subtotal
                     hasresult = True
         if hasresult:
             if withtotals:
                 #return '%s of %s' % (remain_total, qty_total) 
-                color = '585858'
-                return format_html('{} <span style="color: #{};"><sub>of {}</sub></span>', remain_total, color, qty_total)
+                return format_html('{} <span style="color: #{};"><sub>of {}</sub></span>', remain_total, '585858', qty_total)
             else: 
                 return remain_total 
         return '-'
-    def cm_total(self): # just playing
-        return self.productcategory_quantity('CM')
-    @property
-    def value_net(self):
-        value = OrderItem.objects.filter(order__id = self.id).aggregate(sum=Sum(
-            F('xprice')*F('quantity'), output_field=DecimalField())
-            )["sum"]
-        return round(value, 2)
+    def productcategoryprocess_remain_qs(self, product_category, process, withtotals=False):
+        # ** dog slooowwww **
+        # OrderItem.objects ; .select_related('product__type__category')
+        qs = OrderItem.objects.filter(
+            Q(order__id = self.id) & # not required with  self.items
+            Q(product__type__category__title=product_category) #product__type__category__title -> using category annotation same speed
+            ).all()
+        remain_total = qs.aggregate(sum=Sum(F(f'{process}_remain2'), 
+                output_field=IntegerField()))['sum']
+        qty_total = qs.aggregate(qty=Sum(F('quantity'), 
+                output_field=IntegerField()))['qty']
+        if remain_total is None:  # distiguish from zero 
+            return '-'
+        if withtotals: 
+            #return '%s of %s' % (remain_total, qty_total) 
+            return format_html('{} <span style="color: #{};"><sub>of {}</sub></span>', remain_total, '585858', qty_total)
+        else: 
+            return remain_total 
+    def productcategory_quantity(self, product_category, withprogress=False):
+        '''basis for dynamic calling e.g. CM_remain_weld  or (with progress) ARM_progress_all'''
+        total_quantity = total_progress = hasresult = 0
+        #items = self.items.filter(product__type__category__title=product_category)#.all()
+        for item in self.items.all(): # filtering items destroy prefetch
+            #import pdb; pdb.set_trace()
+            if product_category == item.product.type.category.title: #kk
+                qty = item.quantity
+                total_quantity += qty
+                # swapped for annotation _2 25/03 - TODO review the whole subroutine
+                total_progress += item.progress2 * qty #item.item_progress * qty
+                hasresult = True
+        if hasresult:
+            total_progress = total_progress/total_quantity if total_quantity else ''
+            if withprogress:
+                #return '%s of %s' % (total_quantiy, total_progress)
+                total_progress = '{0:.0f}%'.format(total_progress) #if total_progress else '0%'
+                return format_html('{} <span style="color: #{};">&nbsp<sub>{}</sub></span>', total_quantity, '585858', total_progress)
+            return total_quantity
+        return '-'
    
-    
-# -----
-
-def product_process_class_methods(cls, product_category, process, method_name, withtotals=False):
-    def innerfunc(self):
-        return self.productcategoryprocess_remain(product_category, process, withtotals)
-    innerfunc.__name__ = method_name
-    setattr(innerfunc, 'short_description', product_category)
-    setattr (cls, innerfunc.__name__, property(innerfunc))
-for process in work_field_names:
-    ''' create methods e.g. CM_remain_weld'''
-    for product_category in ProductCategories: 
-        method_name = product_category + '_remain_' + process
-        product_process_class_methods(Order, product_category, process, method_name, True)
-######
-for process in work_field_names:
-    #  # crude and inefficient hack implimented
-    ''' create methods e.g. CM_remain_weld_totals for the total summary row'''
-    for product_category in ProductCategories: 
-        method_name = product_category + '_remain_' + process +'_totals'
-        product_process_class_methods(Order, product_category, process, method_name, False)
-
-#---
-
-def product_total_class_methods(cls, product_category, method_name, withprogress=False):
-    def innerfunc(self):
-        return self.productcategory_quantity(product_category, withprogress)
-    innerfunc.__name__ = method_name
-    setattr(innerfunc, 'short_description', product_category) 
-    setattr (cls, innerfunc.__name__, property(innerfunc))
-for product_category in ProductCategories: 
-    '''e.g. ARM_total_all'''
-    method_name = product_category + '_total_all'
-    product_total_class_methods(Order, product_category, method_name, False)
-for product_category in ProductCategories: 
-    '''e.g. ARM_progress_all'''
-    method_name = product_category + '_progress_all'
-    product_total_class_methods(Order, product_category, method_name, True)
-#######
-for product_category in ProductCategories: 
-    # crude and inefficient hack implimented
-    '''e.g. ARM_progress_all_totals for the total summary row'''
-    method_name = product_category + '_progress_all_totals'
-    product_total_class_methods(Order, product_category, method_name, False)
-    
+ 

@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.html import format_html
 from django.db.models import Q, F, Count, Sum, ExpressionWrapper, DecimalField
 import datetime
+import itertools
 from .product import Product
 
 # used to access Product without circular references 
@@ -18,7 +19,7 @@ from ..utils import work_field_names
 # simple-history not so impressive, may expore django reversion
 
 
-class Address(models.Model):
+class Address2(models.Model):
     INVOICE =          'INVOICE'
     DELIVERY =         'DELIVERY'
 
@@ -27,8 +28,8 @@ class Address(models.Model):
         (DELIVERY, 'Delivery'),
     )
     #  limit_choices_to={'is_staff': True} # example
-    company = models.ForeignKey('COMPANY', related_name='addresses', on_delete=models.PROTECT)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=INVOICE)
+    #company = models.ForeignKey('COMPANY', related_name='addresses', on_delete=models.PROTECT)
+    #type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=INVOICE)
     name = models.CharField(max_length=100)#, blank=True, default='') 
     address = models.TextField() 
     postcode = models.CharField(max_length=9)
@@ -44,24 +45,22 @@ class Address(models.Model):
         return self.name
 
 
-class CompanyManager(models.Manager):
-    ''' optimize queries with prefetches and annotations'''
-    def get_queryset(self):
-        #import pdb; pdb.set_trace()
-        qs = super().get_queryset().prefetch_related(
-            #'ordernotes',
-            #'contacts',
-            #'addresses',
-            #'products',
-            #models.Prefetch('products', queryset=Product.objects.filter(?))
-        ).select_related(
-        #
-        ).annotate(
-            #
-        )
-        return qs
 
-class Company(models.Model):
+class company_listing(models.Model):
+    # company_type_names = ['subCustomer','Customer','Supplier', 'Other']
+    # company_type_tuples = list(zip(itertools.count(start=1), company_type_names))
+    # company_status_names = ['Active', 'Lead','Archived']
+    # company_status_tuples = list(zip(itertools.count(start=1), company_status_names))
+    name = models.CharField(max_length=100, unique = True)
+    delivery = models.ForeignKey('Address2', related_name='listing', on_delete=models.PROTECT)
+    #type = models.CharField(max_length=20, choices=COMPANY_TYPE, default=CUSTOMER)
+    #status = models.CharField(max_length=20, choices=COMPANY_STATUS, default=ACTIVE)
+    #shortname = models.CharField(max_length=20)#, unique = True)
+    #codename = models.CharField(max_length=4)#, unique = True, null=True)
+
+
+
+class Company2(models.Model):
 #class Place(PolymorphicModel):
     CUSTOMER = 'Customer'
     SUPPLIER = 'Supplier'
@@ -82,18 +81,19 @@ class Company(models.Model):
         (LEAD, 'Lead'),
         (ARCHIVED, 'Archived')
     )
-    objects = CompanyManager()
+    #objects = CompanyManager()
     name = models.CharField(max_length=100, unique = True)
     shortname = models.CharField(max_length=20)#, unique = True)
     codename = models.CharField(max_length=4)#, unique = True, null=True)
-    type = models.CharField(max_length=20, choices=COMPANY_TYPE, default=CUSTOMER)
-    status = models.CharField(max_length=20, choices=COMPANY_STATUS, default=ACTIVE)
+    invoice_address = models.ForeignKey('Address2', related_name='company', on_delete=models.PROTECT)
+    #type = models.CharField(max_length=20, choices=COMPANY_TYPE, default=CUSTOMER)
+    #status = models.CharField(max_length=20, choices=COMPANY_STATUS, default=ACTIVE)
     VAT_Number = models.CharField(max_length=40, blank=True, default='')
     tax_status = models.CharField(max_length=100, blank=True, default='') # possible add choices
     office_notes = models.TextField(blank=True, default='')
     ##order_notes = models.TextField(blank=True, default='')
     ##manufacture_notes = models.TextField(blank=True, default='')
-    #delivery_notes = models.TextField(blank=True, default='')    
+    ##delivery_notes = models.TextField(blank=True, default='')    
     created_at = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     # ...
@@ -104,14 +104,14 @@ class Company(models.Model):
         #alternsative: qs = apps.get_model('erp', 'Product').objects.filter(company__pk = self.pk) # Product.
         return qs
     class Meta:
-        verbose_name_plural = 'Companies'
+        verbose_name_plural = 'Companies2'
     def __str__(self):
         return self.name
    
 
 
-class Contact(models.Model):
-    company = models.ForeignKey(Company, related_name='contacts', on_delete=models.PROTECT)
+class Contact2(models.Model):
+    company = models.ForeignKey(Company2, related_name='contacts', on_delete=models.PROTECT)
     name = models.CharField(max_length=60)
     role = models.CharField(max_length=60)
     mobile_number = models.CharField(max_length=20, blank=True, default='')
@@ -123,7 +123,7 @@ class Contact(models.Model):
     class Meta:
         ordering = ('company','name')
         constraints = [
-        models.UniqueConstraint(fields=['company', 'name'], name='unique_contact')
+        models.UniqueConstraint(fields=['company', 'name'], name='unique_contact2')
         ]
     def __str__(self):
         return self.name

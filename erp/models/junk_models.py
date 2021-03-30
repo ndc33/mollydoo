@@ -351,3 +351,54 @@ class OrderPack(Order):
         proxy = True
         verbose_name_plural = 'Works Pack View'
 """
+
+
+# from utils.py
+
+
+"""
+class TestDynamic(models.Model):
+    test = models.BooleanField(default=False) 
+    class Meta:
+        #app_label = 'erp'
+        pass
+    def _test(self):
+        return self.process
+
+
+class AccessMixin():
+    def get_related_field(name, admin_order_field=None, short_description=None):
+        '''dynamic access to related model attributes, or query object annotations
+            from admin list_display strings etc
+            add <name>__html to get html markup contained in the annotation'''
+        #@property
+        html = None
+        def _html(value):
+            # obj.strip(')(').split(',') 
+            html = mark_safe(value)
+            #html = format_html('<span style="color: #{};">{}</span>', '008000', value)
+            return html
+        related_names = [x for x in name.split('__') if x]
+        if related_names[-1] == 'html':
+            html = related_names.pop() 
+        if related_names[-1].startswith('@'):
+            farg = related_names.pop()[1:]
+        def dynamic_attribute(obj):
+            for related_name in related_names:
+                if 'ppp' in related_names:
+                #import pdb; pdb.set_trace()
+                    pass
+                obj = getattr(obj, related_name) #()
+            if farg:
+                return obj(farg)
+            return _html(obj) if html else mark_safe(obj) # with mark_safe on all no longer require html function
+        dynamic_attribute.admin_order_field = admin_order_field or '__'.join(related_names) #name
+        dynamic_attribute.short_description = short_description or related_names[-1].title().replace('_', ' ')
+        return dynamic_attribute
+    def __getattr__(self, attr):
+        if '__' in attr:
+            #import pdb; pdb.set_trace()
+            return self.get_related_field(attr)
+        # not dynamic lookup, default behaviour
+        return self.__getattribute__(attr)
+"""

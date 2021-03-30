@@ -15,11 +15,10 @@ work_field_names = ['print','pcut','weld','cut','glue','stuff','pack']
 
 
 def create_model(model, name, kwargsextra={}):
-    ''' e.g. vv = create_model(name='dynamic1', model=TestDynamic, process = 'print')'''
+    ''' e.g. vv = create_model(name='dynamic1', model=TestDynamic, {process:'print'})'''
     class Meta:
         proxy = True
-        #app_label = 'erp'
-        app_label = model._meta.app_label
+        app_label = model._meta.app_label #'erp'
         verbose_name_plural = kwargsextra['verbose_name_plural']
         # model._meta.label_lower
     attrs = {'__module__': '', 'Meta': Meta,**kwargsextra}
@@ -29,19 +28,25 @@ def create_model(model, name, kwargsextra={}):
 
 
 def get_related_field(name, admin_order_field=None, short_description=None):
-    '''dynamic access to related model attributes, or query object annotations
-        from admin list_display strings etc
-        add <name>__html to get html markup contained in the annotation'''
+    '''dynamic access to model and related model 
+        1) model and admin methods 
+        2) model and admin functions 
+        3) query annotations etc
+        used in admin list_display strings, details view read_only fields etc
+        a) can call method e.g. '__method_on_same_object'
+        b) method on related object '__relatedModel__method'
+        c) can call with fuction args '____relatedModel__method__(arg1, short_name)'
+        ** the last arg on function call is allways the shortname (ignored as function arg) **
+        d) hence can call a method and add the shortname '__method__(short_name)'
+        e) can also call argless functions '__querysetname__count__(,short_name)' 
+        f) <name>__html (now redundent) to get html markup contained in the annotation'''
     #@property
     html = None
     farg = None
     column_title = None
     title =False
     def _html(value): # not used
-        # obj.strip(')(').split(',') 
-        html = mark_safe(value)
-        #html = format_html('<span style="color: #{};">{}</span>', '008000', value)
-        return html
+        return mark_safe(value)
     related_names = [x for x in name.split('__') if x]
     #rcopy = 
     if related_names[-1] == 'html':
@@ -61,7 +66,7 @@ def get_related_field(name, admin_order_field=None, short_description=None):
     if name == '':
         import pdb; pdb.set_trace()
     # fixme admin_order_field broken
-    #if not farg == ['']:
+    #if not farg == ['']: # testing
     #    print(name)
         #import pdb; pdb.set_trace()
     title = '__'.join(related_names)
@@ -159,59 +164,3 @@ def shortdate(obj):
 
 
 
-
-"""
-class TestDynamic(models.Model):
-    test = models.BooleanField(default=False) 
-    class Meta:
-        #app_label = 'erp'
-        pass
-    def _test(self):
-        return self.process
-
-
-class AccessMixin():
-    def get_related_field(name, admin_order_field=None, short_description=None):
-        '''dynamic access to related model attributes, or query object annotations
-            from admin list_display strings etc
-            add <name>__html to get html markup contained in the annotation'''
-        #@property
-        html = None
-        def _html(value):
-            # obj.strip(')(').split(',') 
-            html = mark_safe(value)
-            #html = format_html('<span style="color: #{};">{}</span>', '008000', value)
-            return html
-        related_names = [x for x in name.split('__') if x]
-        if related_names[-1] == 'html':
-            html = related_names.pop() 
-        if related_names[-1].startswith('@'):
-            farg = related_names.pop()[1:]
-        def dynamic_attribute(obj):
-            for related_name in related_names:
-                if 'ppp' in related_names:
-                #import pdb; pdb.set_trace()
-                    pass
-                obj = getattr(obj, related_name) #()
-            if farg:
-                return obj(farg)
-            return _html(obj) if html else mark_safe(obj) # with mark_safe on all no longer require html function
-        dynamic_attribute.admin_order_field = admin_order_field or '__'.join(related_names) #name
-        dynamic_attribute.short_description = short_description or related_names[-1].title().replace('_', ' ')
-        return dynamic_attribute
-    def __getattr__(self, attr):
-        if '__' in attr:
-            #import pdb; pdb.set_trace()
-            return self.get_related_field(attr)
-        # not dynamic lookup, default behaviour
-        return self.__getattribute__(attr)
-"""
-
-'''
-class RelatedFieldAdmin(admin.ModelAdmin):
-    def __getattr__(self, attr):
-        if '__' in attr:
-            return get_related_field(attr)
-        # not dynamic lookup, default behaviour
-    return self.__getattribute__(attr)
-'''
